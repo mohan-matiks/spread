@@ -2,26 +2,42 @@ package service
 
 import (
 	"context"
+	"errors"
 	"io"
 	"mime/multipart"
+	"strconv"
 
+	"github.com/SwishHQ/spread/logger"
 	"github.com/SwishHQ/spread/pkg"
+	"github.com/SwishHQ/spread/src/model"
 	"github.com/SwishHQ/spread/src/repository"
+	"github.com/SwishHQ/spread/types"
+	"github.com/SwishHQ/spread/utils"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.uber.org/zap"
 )
 
 type BundleService interface {
 	UploadBundle(fileName string, file *multipart.FileHeader) error
+	Rollback(rollbackRequest *types.RollbackRequest) (*model.Bundle, error)
+	CreateNewBundle(createNewBundleRequest *types.CreateNewBundleRequest) (*model.Bundle, error)
+	GetBundleById(id primitive.ObjectID) (*model.Bundle, error)
 }
 
-type bundleServiceImpl struct {
+type bundleService struct {
+	appService         AppService
+	versionService     VersionService
+	environmentService EnvironmentService
+
 	bundleRepository repository.BundleRepository
 }
 
-func NewBundleService(bundleRepository repository.BundleRepository) BundleService {
-	return &bundleServiceImpl{bundleRepository: bundleRepository}
+func NewBundleService(appService AppService, versionService VersionService, environmentService EnvironmentService, bundleRepository repository.BundleRepository) BundleService {
+	return &bundleService{appService: appService, versionService: versionService, environmentService: environmentService, bundleRepository: bundleRepository}
 }
 
-func (bundleService *bundleServiceImpl) UploadBundle(fileName string, file *multipart.FileHeader) error {
+func (bundleService *bundleService) UploadBundle(fileName string, file *multipart.FileHeader) error {
 	r2Service, err := pkg.NewR2Service()
 	if err != nil {
 		return err
@@ -44,4 +60,181 @@ func (bundleService *bundleServiceImpl) UploadBundle(fileName string, file *mult
 		return err
 	}
 	return nil
+}
+
+// we check if a version (0.0.1) exists, if it does then we create a new bundle and set the version id to the bundle
+// if it doesn't exist then we create a new version and set the bundle id to the version
+func (bundleService *bundleService) CreateNewBundle(payload *types.CreateNewBundleRequest) (*model.Bundle, error) {
+	app, err := bundleService.appService.GetAppByName(context.Background(), payload.AppName)
+	if err != nil {
+		return nil, err
+	}
+	if app == nil {
+		return nil, errors.New("app not found")
+	}
+	environment, err := bundleService.environmentService.GetEnvironmentByAppIdAndName(context.Background(), app.Id, payload.Environment)
+	if err != nil {
+		return nil, err
+	}
+	if environment == nil {
+		return nil, errors.New("environment not found")
+	}
+	version, err := bundleService.versionService.GetVersionByEnvironmentIdAndAppVersion(context.Background(), environment.Id, payload.AppVersion)
+	if err != nil {
+		return nil, err
+	}
+	logger.L.Info("In CreateNewBundle: Version found", zap.Any("version", version))
+	// if version is not there create a new bundle and version
+	if version == nil {
+		versionNumber := utils.FormatVersionStr(payload.AppVersion)
+		bundle := &model.Bundle{
+			AppId:         app.Id,
+			EnvironmentId: environment.Id,
+			DownloadFile:  payload.DownloadFile,
+			Size:          payload.Size,
+			Hash:          payload.Hash,
+			Description:   payload.Description,
+			IsMandatory:   false,
+			Failed:        0,
+			Installed:     0,
+			IsValid:       true,
+			Label:         "v" + strconv.Itoa(int(versionNumber)) + ":" + strconv.Itoa(1),
+			SequenceId:    1,
+		}
+
+		bundle, err := bundleService.bundleRepository.CreateBundle(context.Background(), bundle)
+		if err != nil {
+			return nil, err
+		}
+		version = &model.Version{
+			EnvironmentId:   environment.Id,
+			AppVersion:      payload.AppVersion,
+			VersionNumber:   versionNumber,
+			CurrentBundleId: bundle.Id,
+		}
+		_, err = bundleService.versionService.CreateVersion(context.Background(), version)
+		if err != nil {
+			return nil, err
+		}
+		// Set the version id to the bundle
+		bundle.VersionId = version.Id
+		_, err = bundleService.bundleRepository.UpdateVersionIdById(context.Background(), bundle.Id, version.Id)
+		if err != nil {
+			return nil, err
+		}
+		return bundle, nil
+	}
+	// else check if the check if previously there exists a version with the same bundle hash
+	existingBundle, err := bundleService.GetBundleByHash(payload.Hash)
+	if err != nil {
+		return nil, err
+	}
+	if existingBundle != nil {
+		return nil, errors.New("bundle with same hash already exists")
+	}
+
+	sequenceId, err := bundleService.bundleRepository.GetNextSeqByEnvironmentIdAndVersionId(context.Background(), environment.Id, version.Id)
+	if err != nil {
+		return nil, err
+	}
+	// if bundle doesn't exist then create and set a new bundle to version
+	bundle := &model.Bundle{
+		AppId:         app.Id,
+		EnvironmentId: environment.Id,
+		DownloadFile:  payload.DownloadFile,
+		Size:          payload.Size,
+		Hash:          payload.Hash,
+		Description:   payload.Description,
+		SequenceId:    sequenceId,
+		VersionId:     version.Id,
+		IsMandatory:   false,
+		Failed:        0,
+		Installed:     0,
+		Label:         "v" + strconv.Itoa(int(version.VersionNumber)) + ":" + strconv.Itoa(int(sequenceId)),
+		IsValid:       true,
+	}
+	bundle, err = bundleService.bundleRepository.CreateBundle(context.Background(), bundle)
+	if err != nil {
+		return nil, err
+	}
+	version.CurrentBundleId = bundle.Id
+	_, err = bundleService.versionService.UpdateVersionCurrentBundleIdByVersionId(context.Background(), version.Id, bundle.Id)
+	if err != nil {
+		return nil, err
+	}
+	return bundle, nil
+}
+
+// Rollback is essentially changing the bundle of a version to the previous bundle if any exists
+func (bundleService *bundleService) Rollback(rollbackRequest *types.RollbackRequest) (*model.Bundle, error) {
+	app, err := bundleService.appService.GetAppByName(context.Background(), rollbackRequest.AppName)
+	if err != nil {
+		return nil, err
+	}
+	environment, err := bundleService.environmentService.GetEnvironmentByAppIdAndName(context.Background(), app.Id, rollbackRequest.Environment)
+	if err != nil {
+		return nil, err
+	}
+	if environment == nil {
+		return nil, errors.New("environment not found")
+	}
+	version, err := bundleService.versionService.GetVersionByEnvironmentIdAndAppVersion(context.Background(), environment.Id, rollbackRequest.AppVersion)
+	if err != nil {
+		return nil, err
+	}
+	if version == nil {
+		return nil, errors.New("version not found")
+	}
+
+	// if no current bundle is set for the version, then return an error
+	if version.CurrentBundleId == primitive.NilObjectID {
+		return nil, errors.New("no bundle found")
+	}
+	bundle, err := bundleService.bundleRepository.GetById(context.Background(), version.CurrentBundleId)
+	if err != nil {
+		return nil, err
+	}
+	// using the current bundle of version, get the previous bundle
+	// every bundle of a version has a sequence id, so we get the previous bundle by subtracting 1 from the current bundle's sequence id
+	rollbackBundle, err := bundleService.bundleRepository.GetBySequenceIdEnvironmentIdAndVersionId(context.Background(), bundle.SequenceId-1, environment.Id, version.Id)
+	if err != nil {
+		return nil, err
+	}
+	// if reollback bundle which is the previous bundle to rollback to is not present
+	if rollbackBundle == nil {
+		version.CurrentBundleId = primitive.NilObjectID
+		_, err = bundleService.versionService.UpdateVersionCurrentBundleIdByVersionId(context.Background(), version.Id, primitive.NilObjectID)
+		if err != nil {
+			return nil, err
+		}
+		return nil, nil
+	}
+	version.CurrentBundleId = rollbackBundle.Id
+	_, err = bundleService.versionService.UpdateVersionCurrentBundleIdByVersionId(context.Background(), version.Id, rollbackBundle.Id)
+	if err != nil {
+		return nil, err
+	}
+	return rollbackBundle, nil
+}
+
+func (bundleService *bundleService) GetBundleByHash(hash string) (*model.Bundle, error) {
+	bundle, err := bundleService.bundleRepository.GetByHash(context.Background(), hash)
+	if err == mongo.ErrNoDocuments {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return bundle, nil
+}
+
+func (bundleService *bundleService) GetBundleById(id primitive.ObjectID) (*model.Bundle, error) {
+	bundle, err := bundleService.bundleRepository.GetById(context.Background(), id)
+	if err != nil {
+		return nil, err
+	}
+	if err == mongo.ErrNoDocuments {
+		return nil, nil
+	}
+	return bundle, nil
 }

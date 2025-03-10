@@ -47,14 +47,20 @@ func main() {
 	environmentService := service.NewEnvironmentService(appService, environmentRepository)
 	environmentController := controller.NewEnvironmentController(environmentService)
 
+	versionRepository := repository.NewVersionRepository(db)
+	versionService := service.NewVersionService(versionRepository)
+
 	bundleRepository := repository.NewBundleRepository(db)
-	bundleService := service.NewBundleService(bundleRepository)
+	bundleService := service.NewBundleService(appService, versionService, environmentService, bundleRepository)
 	bundleController := controller.NewBundleController(bundleService)
 
 	app.Post("/app", appController.CreateApp)
 	app.Post("/environment", environmentController.CreateEnvironment)
-	app.Post("/bundle/upload", bundleController.UploadBundle)
 
+	bundleGroup := app.Group("/bundle")
+	bundleGroup.Post("/create", bundleController.CreateNewBundle)
+	bundleGroup.Post("/upload", bundleController.UploadBundle)
+	bundleGroup.Post("/rollback", bundleController.Rollback)
 	// Start server
 	log.Println("Server started on port " + config.ServerPort)
 	log.Fatal(app.Listen(":" + config.ServerPort))

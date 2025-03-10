@@ -57,3 +57,14 @@ func (environmentRepository *environmentRepositoryImpl) GetByAppIdAndName(ctx co
 	}
 	return &environment, nil
 }
+
+func (environmentRepository *environmentRepositoryImpl) GetByKey(ctx context.Context, key string) (*model.Environment, error) {
+	var environment model.Environment
+	collection := environmentRepository.Connection.Collection("environments")
+	filter := bson.M{"key": key}
+	err := collection.FindOne(ctx, filter).Decode(&environment)
+	if err != nil {
+		return nil, err
+	}
+	return &environment, nil
+}

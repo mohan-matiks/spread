@@ -24,7 +24,7 @@ func ValidateStruct(s interface{}) map[string]string {
 
 func BindAndValidate(c *fiber.Ctx, i interface{}) []string {
 	if err := c.BodyParser(i); err != nil {
-		return []string{"Invalid request format"}
+		return []string{err.Error()}
 	}
 
 	// Validate request data

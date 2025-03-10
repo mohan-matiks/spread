@@ -52,8 +52,5 @@ func (appService *appServiceImpl) GetAppByName(ctx context.Context, appName stri
 	if err != nil {
 		return nil, err
 	}
-	if existingApp == nil {
-		return nil, errors.New("app with name " + appName + " not found")
-	}
 	return existingApp, nil
 }

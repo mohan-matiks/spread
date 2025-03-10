@@ -7,11 +7,11 @@ import (
 )
 
 type Version struct {
-	Id            primitive.ObjectID `json:"id" bson:"_id,omitempty"`
-	DeploymentId  primitive.ObjectID `json:"deploymentId" bson:"deploymentId"`
-	BundleId      string             `json:"bundleId" bson:"bundleId"`
-	AppVersion    string             `json:"appVersion" bson:"appVersion"`
-	VersionNumber int64              `json:"versionNumber" bson:"versionNumber"`
-	UpdatedAt     time.Time          `json:"updatedAt" bson:"updatedAt"`
-	CreatedAt     time.Time          `json:"createdAt" bson:"createdAt"`
+	Id              primitive.ObjectID `json:"id" bson:"_id,omitempty"`
+	EnvironmentId   primitive.ObjectID `json:"environmentId" bson:"environmentId"`
+	AppVersion      string             `json:"appVersion" bson:"appVersion"`
+	VersionNumber   int64              `json:"versionNumber" bson:"versionNumber"`
+	CurrentBundleId primitive.ObjectID `json:"currentBundleId" bson:"currentBundleId"`
+	UpdatedAt       time.Time          `json:"updatedAt" bson:"updatedAt"`
+	CreatedAt       time.Time          `json:"createdAt" bson:"createdAt"`
 }
