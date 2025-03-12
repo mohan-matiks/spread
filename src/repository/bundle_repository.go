@@ -19,6 +19,9 @@ type BundleRepository interface {
 	GetByEnvironmentAndVersion(ctx context.Context, environment string, version string) (*model.Bundle, error)
 	GetNextSeqByEnvironmentIdAndVersionId(ctx context.Context, environmentId primitive.ObjectID, versionId primitive.ObjectID) (int64, error)
 	GetBySequenceIdEnvironmentIdAndVersionId(ctx context.Context, sequenceId int64, environmentId primitive.ObjectID, versionId primitive.ObjectID) (*model.Bundle, error)
+	AddActive(ctx context.Context, id primitive.ObjectID) error
+	AddFailed(ctx context.Context, id primitive.ObjectID) error
+	AddInstalled(ctx context.Context, id primitive.ObjectID) error
 }
 
 type bundleRepositoryImpl struct {
@@ -107,4 +110,31 @@ func (bundleRepository *bundleRepositoryImpl) GetBySequenceIdEnvironmentIdAndVer
 		return nil, err
 	}
 	return &bundle, nil
+}
+
+func (bundleRepository *bundleRepositoryImpl) AddActive(ctx context.Context, id primitive.ObjectID) error {
+	collection := bundleRepository.Connection.Collection("bundles")
+	_, err := collection.UpdateOne(ctx, bson.M{"_id": id}, bson.M{"$inc": bson.M{"active": 1}})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (bundleRepository *bundleRepositoryImpl) AddFailed(ctx context.Context, id primitive.ObjectID) error {
+	collection := bundleRepository.Connection.Collection("bundles")
+	_, err := collection.UpdateOne(ctx, bson.M{"_id": id}, bson.M{"$inc": bson.M{"failed": 1}})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (bundleRepository *bundleRepositoryImpl) AddInstalled(ctx context.Context, id primitive.ObjectID) error {
+	collection := bundleRepository.Connection.Collection("bundles")
+	_, err := collection.UpdateOne(ctx, bson.M{"_id": id}, bson.M{"$inc": bson.M{"installed": 1}})
+	if err != nil {
+		return err
+	}
+	return nil
 }

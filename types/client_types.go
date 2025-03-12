@@ -14,3 +14,19 @@ type UpdateInfo struct {
 	IsMandatory            bool   `json:"is_mandatory"`
 	Rollout                int    `json:"rollout"`
 }
+
+type ReportStatusRequest struct {
+	AppVersion                *string `json:"app_version"`
+	DeploymentKey             *string `json:"deployment_key"`
+	ClientUniqueId            *string `json:"client_unique_id"`
+	Label                     *string `json:"label"`
+	Status                    *string `json:"status"`
+	PreviousLabelOrAppVersion *string `json:"previousLabelOrAppVersion"`
+	PreviousDeploymentKey     *string `json:"previousDeploymentKey"`
+}
+
+type ReportStatusDownloadRequest struct {
+	ClientUniqueId *string `json:"client_unique_id"`
+	DeploymentKey  *string `json:"deployment_key"`
+	Label          *string `json:"label"`
+}

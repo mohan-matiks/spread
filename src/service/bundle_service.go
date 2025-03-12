@@ -23,6 +23,9 @@ type BundleService interface {
 	Rollback(rollbackRequest *types.RollbackRequest) (*model.Bundle, error)
 	CreateNewBundle(createNewBundleRequest *types.CreateNewBundleRequest) (*model.Bundle, error)
 	GetBundleById(id primitive.ObjectID) (*model.Bundle, error)
+	AddActive(ctx context.Context, id primitive.ObjectID) error
+	AddFailed(ctx context.Context, id primitive.ObjectID) error
+	AddInstalled(ctx context.Context, id primitive.ObjectID) error
 }
 
 type bundleService struct {
@@ -237,4 +240,16 @@ func (bundleService *bundleService) GetBundleById(id primitive.ObjectID) (*model
 		return nil, nil
 	}
 	return bundle, nil
+}
+
+func (bundleService *bundleService) AddActive(ctx context.Context, id primitive.ObjectID) error {
+	return bundleService.bundleRepository.AddActive(ctx, id)
+}
+
+func (bundleService *bundleService) AddFailed(ctx context.Context, id primitive.ObjectID) error {
+	return bundleService.bundleRepository.AddFailed(ctx, id)
+}
+
+func (bundleService *bundleService) AddInstalled(ctx context.Context, id primitive.ObjectID) error {
+	return bundleService.bundleRepository.AddInstalled(ctx, id)
 }
