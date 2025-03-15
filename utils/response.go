@@ -15,7 +15,14 @@ func SuccessResponse(c *fiber.Ctx, data interface{}) error {
 }
 
 func ErrorResponse(c *fiber.Ctx, message string) error {
-	return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+	return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+		"success": false,
+		"message": message,
+	})
+}
+
+func UnauthorizedResponse(c *fiber.Ctx, message string) error {
+	return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 		"success": false,
 		"message": message,
 	})

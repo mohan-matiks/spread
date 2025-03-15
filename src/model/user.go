@@ -6,12 +6,12 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-type AuthKey struct {
+type User struct {
 	Id        primitive.ObjectID `json:"id" bson:"_id,omitempty"`
-	Name      string             `json:"name" bson:"name"`
-	Key       string             `json:"key" bson:"key"`
+	Username  string             `json:"username" bson:"username"`
+	Password  string             `json:"password" bson:"password"`
+	Roles     []string           `json:"roles" bson:"roles"`
 	IsValid   bool               `json:"isValid" bson:"isValid"`
-	CreatedBy string             `json:"createdBy" bson:"createdBy"`
 	CreatedAt time.Time          `json:"createdAt" bson:"createdAt"`
 	UpdatedAt time.Time          `json:"updatedAt" bson:"updatedAt"`
 }

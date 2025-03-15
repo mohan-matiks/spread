@@ -18,6 +18,7 @@ type Bundle struct {
 	IsMandatory   bool               `json:"isMandatory" bson:"isMandatory" default:"false"`
 	Failed        int                `json:"failed" bson:"failed" default:"0"`
 	Installed     int                `json:"installed" bson:"installed" default:"0"`
+	Active        int                `json:"active" bson:"active" default:"0"`
 	Description   string             `json:"description" bson:"description"`
 	Label         string             `json:"label" bson:"label"`
 	IsValid       bool               `json:"isValid" bson:"isValid" default:"true"`

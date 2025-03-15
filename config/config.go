@@ -12,6 +12,7 @@ var (
 	ServerPort                  = GetEnv("PORT", "3000")
 	AppName                     = GetEnv("APP_NAME", "")
 	MongoUrl                    = GetEnv("MONGODB_URL", "")
+	TokenSecret                 = GetEnv("TOKEN_SECRET", "")
 	MongoDatabase               = GetEnv("MONGODB_DATABASE", "")
 	CloudflareR2AccountID       = GetEnv("CLOUDFLARE_R2_ACCOUNT_ID", "")
 	CloudflareR2Bucket          = GetEnv("CLOUDFLARE_R2_BUCKET", "")

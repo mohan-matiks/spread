@@ -72,7 +72,7 @@ func (v *versionRepository) GetByEnvironmentAndVersion(ctx context.Context, envi
 func (v *versionRepository) GetLatestVersionByEnvironmentId(ctx context.Context, environmentId primitive.ObjectID) (*model.Version, error) {
 	collection := v.Connection.Collection("versions")
 	var versionDocument model.Version
-	opts := options.FindOne().SetSort(bson.D{{"versionNumber", -1}})
+	opts := options.FindOne().SetSort(bson.D{{Key: "versionNumber", Value: -1}})
 	err := collection.FindOne(ctx, bson.M{"environmentId": environmentId}, opts).Decode(&versionDocument)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {

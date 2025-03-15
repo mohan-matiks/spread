@@ -13,7 +13,8 @@ import (
 
 type ClientService interface {
 	CheckUpdate(environmentKey string, appVersion string, bundleHash string) (*types.UpdateInfo, error)
-	ReportStatusDeploy(reportStatusRequest *types.ReportStatusRequest) error
+	ReportStatusDeploy(reportStatusRequest *types.ReportStatusDeployRequest) error
+	ReportStatusDownload(reportStatusRequest *types.ReportStatusDownloadRequest) error
 }
 
 type clientService struct {
@@ -31,6 +32,10 @@ func NewClientService(appService AppService, environmentService EnvironmentServi
 		versionService:     versionService,
 	}
 }
+
+// check for new update for a given environment and app version
+// if there is a new update, return the update info
+// if there is no update, return nil
 func (s *clientService) CheckUpdate(environmentKey string, appVersion string, bundleHash string) (*types.UpdateInfo, error) {
 	var updateInfo *types.UpdateInfo
 	environment, err := s.environmentService.GetEnvironmentByKey(context.Background(), environmentKey)
@@ -63,7 +68,11 @@ func (s *clientService) CheckUpdate(environmentKey string, appVersion string, bu
 		return updateInfo, nil
 	}
 
-	latestVersion, _ := s.versionService.GetLatestVersionByEnvironmentId(context.Background(), environment.Id)
+	latestVersion, err := s.versionService.GetLatestVersionByEnvironmentId(context.Background(), environment.Id)
+	if err != nil {
+		logger.L.Error("In CheckUpdate: Error getting latest version by environment id", zap.String("environmentId", environment.Id.Hex()), zap.Error(err))
+		return updateInfo, err
+	}
 
 	if bundle.Hash != bundleHash && appVersion == version.AppVersion {
 		updateInfo = &types.UpdateInfo{
@@ -96,15 +105,15 @@ func (s *clientService) CheckUpdate(environmentKey string, appVersion string, bu
 
 // we retrive bundle using the labelId, during checkupdate we send label as bundleId which
 // the SDK sends back to report status. Use the label to fetch bundle and react to the status
-func (s *clientService) ReportStatusDeploy(reportStatusRequest *types.ReportStatusRequest) error {
-	bundleId, err := primitive.ObjectIDFromHex(*reportStatusRequest.Label)
+func (s *clientService) ReportStatusDeploy(reportStatusRequest *types.ReportStatusDeployRequest) error {
+	bundleId, err := primitive.ObjectIDFromHex(reportStatusRequest.Label)
 	if err != nil {
-		logger.L.Error("In ReportStatusDeploy: Error getting bundle by id", zap.String("bundleId", *reportStatusRequest.Label), zap.Error(err))
+		logger.L.Error("In ReportStatusDeploy: Error getting bundle id", zap.String("bundleId", reportStatusRequest.Label), zap.Error(err))
 		return err
 	}
 	bundle, err := s.bundleService.GetBundleById(bundleId)
 	if err != nil {
-		logger.L.Error("In ReportStatusDeploy: Error getting bundle by id", zap.String("App Version", *reportStatusRequest.AppVersion), zap.String("Deployment Key", *reportStatusRequest.DeploymentKey), zap.String("Client Unique Id", *reportStatusRequest.ClientUniqueId), zap.String("Label", *reportStatusRequest.Label), zap.Error(err))
+		logger.L.Error("In ReportStatusDeploy: Error getting bundle by id", zap.String("App Version", reportStatusRequest.AppVersion), zap.String("Deployment Key", reportStatusRequest.DeploymentKey), zap.String("Client Unique Id", reportStatusRequest.ClientUniqueId), zap.String("Label", reportStatusRequest.Label), zap.Error(err))
 		return err
 	}
 	if bundle == nil {
@@ -112,7 +121,7 @@ func (s *clientService) ReportStatusDeploy(reportStatusRequest *types.ReportStat
 		return errors.New("bundle not found")
 	}
 
-	if *reportStatusRequest.Status == "DeploymentSucceeded" {
+	if reportStatusRequest.Status == "DeploymentSucceeded" {
 		err = s.bundleService.AddActive(context.Background(), bundleId)
 		if err != nil {
 			logger.L.Error("In ReportStatusDeploy: Error adding active", zap.String("bundleId", bundleId.Hex()), zap.Error(err))
@@ -120,20 +129,54 @@ func (s *clientService) ReportStatusDeploy(reportStatusRequest *types.ReportStat
 		}
 	}
 
-	if *reportStatusRequest.Status == "DeploymentFailed" {
+	if reportStatusRequest.Status == "DeploymentFailed" {
 		err = s.bundleService.AddFailed(context.Background(), bundleId)
 		if err != nil {
 			logger.L.Error("In ReportStatusDeploy: Error adding failed", zap.String("bundleId", bundleId.Hex()), zap.Error(err))
 			return err
 		}
 	}
+
+	// if the previous label or app version is not nil, we need to decrement the active count of the previous bundle
+	if reportStatusRequest.PreviousLabelOrAppVersion != nil && reportStatusRequest.PreviousDeploymentKey != nil {
+		previoudEnvironment, err := s.environmentService.GetEnvironmentByKey(context.Background(), *reportStatusRequest.PreviousDeploymentKey)
+		if err != nil {
+			logger.L.Error("In ReportStatusDeploy: Error getting environment by key", zap.String("deploymentKey", *reportStatusRequest.PreviousDeploymentKey), zap.Error(err))
+			return nil
+		}
+		if previoudEnvironment == nil {
+			logger.L.Error("In ReportStatusDeploy: Previous environment not found", zap.String("previousDeploymentKey", *reportStatusRequest.PreviousDeploymentKey))
+			return nil
+		}
+		previousBundleId, err := primitive.ObjectIDFromHex(*reportStatusRequest.PreviousLabelOrAppVersion)
+		if err != nil {
+			logger.L.Error("In ReportStatusDeploy: Error getting bundle id", zap.String("bundleId", *reportStatusRequest.PreviousLabelOrAppVersion), zap.Error(err))
+			return nil
+		}
+		previousBundle, err := s.bundleService.GetBundleById(previousBundleId)
+		if err != nil {
+			logger.L.Error("In ReportStatusDeploy: Error getting bundle by id", zap.String("bundleId", previousBundleId.Hex()), zap.Error(err))
+			return nil
+		}
+		if previousBundle == nil {
+			logger.L.Error("In ReportStatusDeploy: Previous bundle not found", zap.String("bundleId", previousBundleId.Hex()))
+			return nil
+		}
+		// if previous bundle exist, then we decrement the active count of the previous bundle
+		err = s.bundleService.DecrementActive(context.Background(), previousBundleId)
+		if err != nil {
+			logger.L.Error("In ReportStatusDeploy: Error decrementing active", zap.String("bundleId", previousBundleId.Hex()), zap.Error(err))
+			return nil
+		}
+	}
+
 	return nil
 }
 
-func (s *clientService) ReportStatusDownload(reportStatusRequest *types.ReportStatusRequest) error {
+func (s *clientService) ReportStatusDownload(reportStatusRequest *types.ReportStatusDownloadRequest) error {
 	bundleId, err := primitive.ObjectIDFromHex(*reportStatusRequest.Label)
 	if err != nil {
-		logger.L.Error("In ReportStatusDownload: Error getting bundle by id", zap.String("bundleId", *reportStatusRequest.Label), zap.Error(err))
+		logger.L.Error("In ReportStatusDownload: Error getting bundle id", zap.String("bundleId", *reportStatusRequest.Label), zap.Error(err))
 		return err
 	}
 	bundle, err := s.bundleService.GetBundleById(bundleId)
@@ -145,7 +188,6 @@ func (s *clientService) ReportStatusDownload(reportStatusRequest *types.ReportSt
 		logger.L.Error("In ReportStatusDownload: Bundle not found", zap.String("bundleId", bundleId.Hex()))
 		return errors.New("bundle not found")
 	}
-
 	err = s.bundleService.AddInstalled(context.Background(), bundleId)
 	if err != nil {
 		logger.L.Error("In ReportStatusDownload: Error adding install", zap.String("bundleId", bundleId.Hex()), zap.Error(err))

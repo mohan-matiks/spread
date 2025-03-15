@@ -33,7 +33,8 @@ func (bundleController *bundleControllerImpl) UploadBundle(c *fiber.Ctx) error {
 
 	uploadedFile, err := c.FormFile("file")
 	if err != nil {
-		return utils.ErrorResponse(c, "Failed to get uploaded file")
+		logger.L.Error("In UploadBundle: no file found", zap.Error(err))
+		return utils.ErrorResponse(c, "No file found")
 	}
 
 	err = bundleController.bundleService.UploadBundle(fileName, uploadedFile)

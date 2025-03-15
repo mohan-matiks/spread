@@ -2,10 +2,22 @@ package utils
 
 import (
 	"log"
+	"math/rand"
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 )
+
+func GenerateAuthKey() string {
+	rand.Seed(time.Now().UnixNano())
+	chars := "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	b := make([]byte, 32)
+	for i := range b {
+		b[i] = chars[rand.Intn(len(chars))]
+	}
+	return string(b)
+}
 
 func FormatVersionStr(v string) int64 {
 	vs := strings.Split(v, ".")

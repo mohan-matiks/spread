@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/SwishHQ/spread/config"
+	"github.com/SwishHQ/spread/middleware"
 	"github.com/SwishHQ/spread/pkg"
 	"github.com/SwishHQ/spread/src/controller"
 	"github.com/SwishHQ/spread/src/repository"
@@ -39,6 +40,14 @@ func main() {
 		})
 	})
 
+	userRepository := repository.NewUserRepository(db)
+	userService := service.NewUserService(userRepository)
+	userController := controller.NewUserController(userService)
+
+	authKeyRepository := repository.NewAuthKeyRepository(db)
+	authKeyService := service.NewAuthKeyService(authKeyRepository)
+	authKeyController := controller.NewAuthKeyController(authKeyService)
+
 	appRepository := repository.NewAppRepository(db)
 	appService := service.NewAppService(appRepository)
 	appController := controller.NewAppController(appService)
@@ -54,13 +63,34 @@ func main() {
 	bundleService := service.NewBundleService(appService, versionService, environmentService, bundleRepository)
 	bundleController := controller.NewBundleController(bundleService)
 
-	app.Post("/app", appController.CreateApp)
-	app.Post("/environment", environmentController.CreateEnvironment)
+	clientService := service.NewClientService(appService, environmentService, bundleService, versionService)
+	clientController := controller.NewClientController(clientService)
 
-	bundleGroup := app.Group("/bundle")
+	// public endpoints
+	app.Post("/login", userController.LoginUser)
+	app.Post("/user/create", userController.CreateUser)
+
+	// code-push compatible endpoints
+	app.Get("/v0.1/public/codepush/update_check", clientController.CheckUpdate)
+	app.Post("/v0.1/public/codepush/report_status/deploy", clientController.ReportStatusDeploy)
+	app.Post("/v0.1/public/codepush/report_status/download", clientController.ReportStatusDownload)
+
+	// protected endpoints
+	coreGroup := app.Group("/core", func(c *fiber.Ctx) error {
+		return middleware.AuthMiddleware(c, userService)
+	})
+	coreGroup.Post("/environment", environmentController.CreateEnvironment)
+	coreGroup.Post("/app", appController.CreateApp)
+	coreGroup.Post("/auth-key/create", authKeyController.CreateAuthKey)
+
+	// auth key protected endpoints
+	bundleGroup := app.Group("/bundle", func(c *fiber.Ctx) error {
+		return middleware.AuthKeyMiddleware(c, authKeyService)
+	})
 	bundleGroup.Post("/create", bundleController.CreateNewBundle)
 	bundleGroup.Post("/upload", bundleController.UploadBundle)
 	bundleGroup.Post("/rollback", bundleController.Rollback)
+
 	// Start server
 	log.Println("Server started on port " + config.ServerPort)
 	log.Fatal(app.Listen(":" + config.ServerPort))

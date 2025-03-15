@@ -26,6 +26,7 @@ type BundleService interface {
 	AddActive(ctx context.Context, id primitive.ObjectID) error
 	AddFailed(ctx context.Context, id primitive.ObjectID) error
 	AddInstalled(ctx context.Context, id primitive.ObjectID) error
+	DecrementActive(ctx context.Context, id primitive.ObjectID) error
 }
 
 type bundleService struct {
@@ -252,4 +253,8 @@ func (bundleService *bundleService) AddFailed(ctx context.Context, id primitive.
 
 func (bundleService *bundleService) AddInstalled(ctx context.Context, id primitive.ObjectID) error {
 	return bundleService.bundleRepository.AddInstalled(ctx, id)
+}
+
+func (bundleService *bundleService) DecrementActive(ctx context.Context, id primitive.ObjectID) error {
+	return bundleService.bundleRepository.DecrementActive(ctx, id)
 }
