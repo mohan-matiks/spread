@@ -69,6 +69,7 @@ func (bundleService *bundleService) UploadBundle(fileName string, file *multipar
 // we check if a version (0.0.1) exists, if it does then we create a new bundle and set the version id to the bundle
 // if it doesn't exist then we create a new version and set the bundle id to the version
 func (bundleService *bundleService) CreateNewBundle(payload *types.CreateNewBundleRequest) (*model.Bundle, error) {
+	// Retrieve the app by name
 	app, err := bundleService.appService.GetAppByName(context.Background(), payload.AppName)
 	if err != nil {
 		return nil, err
@@ -76,6 +77,7 @@ func (bundleService *bundleService) CreateNewBundle(payload *types.CreateNewBund
 	if app == nil {
 		return nil, errors.New("app not found")
 	}
+	// Retrieve the environment by app ID and name
 	environment, err := bundleService.environmentService.GetEnvironmentByAppIdAndName(context.Background(), app.Id, payload.Environment)
 	if err != nil {
 		return nil, err
@@ -83,12 +85,13 @@ func (bundleService *bundleService) CreateNewBundle(payload *types.CreateNewBund
 	if environment == nil {
 		return nil, errors.New("environment not found")
 	}
+	// Retrieve the version by environment ID and app version
 	version, err := bundleService.versionService.GetVersionByEnvironmentIdAndAppVersion(context.Background(), environment.Id, payload.AppVersion)
 	if err != nil {
 		return nil, err
 	}
 	logger.L.Info("In CreateNewBundle: Version found", zap.Any("version", version))
-	// if version is not there create a new bundle and version
+	// If version is not found, create a new bundle and version
 	if version == nil {
 		versionNumber := utils.FormatVersionStr(payload.AppVersion)
 		bundle := &model.Bundle{
@@ -106,7 +109,7 @@ func (bundleService *bundleService) CreateNewBundle(payload *types.CreateNewBund
 			SequenceId:    1,
 		}
 
-		bundle, err := bundleService.bundleRepository.CreateBundle(context.Background(), bundle)
+		bundle, err = bundleService.bundleRepository.CreateBundle(context.Background(), bundle)
 		if err != nil {
 			return nil, err
 		}
@@ -120,7 +123,7 @@ func (bundleService *bundleService) CreateNewBundle(payload *types.CreateNewBund
 		if err != nil {
 			return nil, err
 		}
-		// Set the version id to the bundle
+		// Set the version ID to the bundle
 		bundle.VersionId = version.Id
 		_, err = bundleService.bundleRepository.UpdateVersionIdById(context.Background(), bundle.Id, version.Id)
 		if err != nil {
@@ -128,7 +131,7 @@ func (bundleService *bundleService) CreateNewBundle(payload *types.CreateNewBund
 		}
 		return bundle, nil
 	}
-	// else check if the check if previously there exists a version with the same bundle hash
+	// If version exists, check if a bundle with the same hash already exists
 	existingBundle, err := bundleService.GetBundleByHash(payload.Hash)
 	if err != nil {
 		return nil, err
@@ -141,7 +144,7 @@ func (bundleService *bundleService) CreateNewBundle(payload *types.CreateNewBund
 	if err != nil {
 		return nil, err
 	}
-	// if bundle doesn't exist then create and set a new bundle to version
+	// Create a new bundle and set it to the version
 	bundle := &model.Bundle{
 		AppId:         app.Id,
 		EnvironmentId: environment.Id,

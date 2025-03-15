@@ -13,6 +13,7 @@ import (
 
 type AppController interface {
 	CreateApp(c *fiber.Ctx) error
+	GetApps(c *fiber.Ctx) error
 }
 
 type appControllerImpl struct {
@@ -40,4 +41,12 @@ func (controller *appControllerImpl) CreateApp(c *fiber.Ctx) error {
 		"name": app.Name,
 		"os":   app.OS,
 	})
+}
+
+func (controller *appControllerImpl) GetApps(c *fiber.Ctx) error {
+	apps, err := controller.appService.GetApps(context.Background())
+	if err != nil {
+		return utils.ErrorResponse(c, "Error getting apps")
+	}
+	return utils.SuccessResponse(c, apps)
 }

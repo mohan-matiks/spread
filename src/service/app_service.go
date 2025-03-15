@@ -13,6 +13,7 @@ import (
 type AppService interface {
 	CreateApp(ctx context.Context, appName string, os string) (*model.App, error)
 	GetAppByName(ctx context.Context, appName string) (*model.App, error)
+	GetApps(ctx context.Context) ([]*model.App, error)
 }
 
 type appServiceImpl struct {
@@ -27,7 +28,7 @@ func (appService *appServiceImpl) CreateApp(ctx context.Context, appName string,
 	if os != "ios" && os != "android" {
 		return nil, errors.New("invalid os")
 	}
-	existingApp, err := appService.appRepository.GetAppByName(ctx, appName)
+	existingApp, err := appService.appRepository.GetByName(ctx, appName)
 	if err != nil && err != mongo.ErrNoDocuments {
 		return nil, err
 	}
@@ -40,7 +41,7 @@ func (appService *appServiceImpl) CreateApp(ctx context.Context, appName string,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
-	createdApp, err := appService.appRepository.InsertApp(ctx, &app)
+	createdApp, err := appService.appRepository.Insert(ctx, &app)
 	if err != nil {
 		return nil, err
 	}
@@ -48,9 +49,17 @@ func (appService *appServiceImpl) CreateApp(ctx context.Context, appName string,
 }
 
 func (appService *appServiceImpl) GetAppByName(ctx context.Context, appName string) (*model.App, error) {
-	existingApp, err := appService.appRepository.GetAppByName(ctx, appName)
+	existingApp, err := appService.appRepository.GetByName(ctx, appName)
 	if err != nil {
 		return nil, err
 	}
 	return existingApp, nil
+}
+
+func (appService *appServiceImpl) GetApps(ctx context.Context) ([]*model.App, error) {
+	apps, err := appService.appRepository.GetAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return apps, nil
 }

@@ -2,6 +2,11 @@ package utils
 
 import "github.com/gofiber/fiber/v2"
 
+type Response[T any] struct {
+	Success bool `json:"success"`
+	Data    T    `json:"data"`
+}
+
 func SuccessResponse(c *fiber.Ctx, data interface{}) error {
 	if data == nil {
 		return c.Status(fiber.StatusOK).JSON(fiber.Map{

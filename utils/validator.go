@@ -10,6 +10,12 @@ import (
 var Validate = validator.New()
 
 // Function to validate struct and return errors in a map format
+// how to use:
+// err := ValidateStruct(&App{})
+//
+//	if err != nil {
+//		fmt.Println(err)
+//	}
 func ValidateStruct(s interface{}) map[string]string {
 	err := Validate.Struct(s)
 	if err != nil {
@@ -22,6 +28,13 @@ func ValidateStruct(s interface{}) map[string]string {
 	return nil
 }
 
+// BindAndValidate binds the request body to the struct and validates it
+// how to use:
+// err := BindAndValidate(c, &App{})
+//
+//	if err != nil {
+//		fmt.Println(err)
+//	}
 func BindAndValidate(c *fiber.Ctx, i interface{}) []string {
 	if err := c.BodyParser(i); err != nil {
 		return []string{err.Error()}
