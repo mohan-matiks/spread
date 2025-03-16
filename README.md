@@ -4,7 +4,7 @@
   <H1 align="center">Spread</H1>
 </p>
 
-**Spread** is a OTA update server for spreading new releases to React Native apps
+**Spread** is an OTA update server for spreading new releases to React Native apps
 
 ## Usage 
 The entire binary is a CLI tool capable of both running the server as well as supporting commands to release new versions. 
