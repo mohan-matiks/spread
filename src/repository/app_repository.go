@@ -43,7 +43,7 @@ func (appRepository *appRepositoryImpl) GetByName(ctx context.Context, name stri
 
 func (appRepository *appRepositoryImpl) GetAll(ctx context.Context) ([]*model.App, error) {
 	collection := appRepository.db.Collection("apps")
-	var apps []*model.App
+	apps := make([]*model.App, 0)
 	cursor, err := collection.Find(ctx, bson.M{})
 	if err != nil {
 		return nil, err
