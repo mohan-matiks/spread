@@ -1,0 +1,34 @@
+# Binaries
+*.exe
+*.out
+*.o
+*.a
+*.so
+
+# Build artifacts
+/bin
+/build
+/dist
+
+# IDE and Editor settings
+.vscode/
+.idea/
+*.swp
+
+# Version control
+.git
+.gitignore
+
+# Logs and temp files
+logs/
+*.log
+*.tmp
+*.cache
+
+# Docker-related
+Dockerfile
+.dockerignore
+
+# Environment files
+.env
+.env.*
