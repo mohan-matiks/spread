@@ -20,218 +20,91 @@ import (
 	"github.com/google/uuid"
 )
 
-func PushBundle(
-	remoteUrl string,
-	authKey string,
-	appName string,
-	environment string,
-	description string,
-	targetVersion string,
-	projectDir string,
-	osName string, // ios or android
-	isTypescriptProject bool,
-	disableMinify bool,
-	hermes bool,
-) {
+// Configuration struct to hold bundle parameters
+type BundleConfig struct {
+	RemoteURL           string
+	AuthKey             string
+	AppName             string
+	Environment         string
+	Description         string
+	TargetVersion       string
+	ProjectDir          string
+	OSName              string
+	IsTypescriptProject bool
+	DisableMinify       bool
+	Hermes              bool
+}
 
-	if targetVersion == "" || appName == "" || environment == "" {
-		fmt.Println("Usage: spread bundle push --target-version <TargetVersion> --app-name <AppName> --environment <environment> --project-dir <*Optional React native project dir> --os-name <OSName> --description <*Optional Description> --is-typescript (*Optional) --disable-minify (*Optional) --hermes (*Optional)")
-		return
+// PushBundle uploads a new bundle to the server
+func PushBundle(config BundleConfig) error {
+	if err := validateConfig(config); err != nil {
+		return fmt.Errorf("invalid configuration: %w", err)
 	}
 
-	exist, _ := utils.PathExists(projectDir + "build")
-	// check if the build folder exists
-	// if it exists, remove it
-	if exist {
-		os.RemoveAll(projectDir + "build")
+	if err := prepareBuildDirectory(config.ProjectDir); err != nil {
+		return fmt.Errorf("failed to prepare build directory: %w", err)
 	}
 
-	// create the build folder in the given bundle path
-	if err := os.MkdirAll(projectDir+"build/CodePush", os.ModePerm); err != nil {
-		fmt.Println("Create folder error :" + err.Error())
-		return
+	if err := buildBundle(config); err != nil {
+		return fmt.Errorf("failed to build bundle: %w", err)
 	}
 
-	// create the CodePush folder in the build folder
+	if config.Hermes {
+		if err := processHermesBundle(config); err != nil {
+			return fmt.Errorf("failed to process hermes bundle: %w", err)
+		}
+	}
+
+	hash, err := getHash(config.ProjectDir + "build")
+	if err != nil {
+		return fmt.Errorf("failed to generate hash: %w", err)
+	}
+
+	fileName := uuid.New().String() + ".zip"
+	if err := createAndUploadBundle(config, fileName, hash); err != nil {
+		return fmt.Errorf("failed to create and upload bundle: %w", err)
+	}
+
+	return nil
+}
+
+func validateConfig(config BundleConfig) error {
+	if config.TargetVersion == "" || config.AppName == "" || config.Environment == "" {
+		return fmt.Errorf("missing required fields: target version, app name, or environment")
+	}
+	return nil
+}
+
+func prepareBuildDirectory(projectDir string) error {
+	buildPath := projectDir + "build"
+	if exist, _ := utils.PathExists(buildPath); exist {
+		if err := os.RemoveAll(buildPath); err != nil {
+			return err
+		}
+	}
+	return os.MkdirAll(projectDir+"build/CodePush", os.ModePerm)
+}
+
+func buildBundle(config BundleConfig) error {
 	jsName := "main.jsbundle"
-	if osName == "android" {
+	if config.OSName == "android" {
 		jsName = "index.android.bundle"
 	}
 
-	minify := "true"
-	if disableMinify {
-		minify = "false"
-	}
-
 	indexFile := "index.js"
-	if isTypescriptProject {
+	if config.IsTypescriptProject {
 		indexFile = "index.tsx"
 	}
 
-	buildUrl := projectDir + "build/CodePush"
-
-	bundelUrl := buildUrl + "/" + jsName
-	cmd := exec.Command(
-		"npx",
-		"react-native",
-		"bundle",
-		"--assets-dest",
-		buildUrl,
-		"--bundle-output",
-		bundelUrl,
-		"--dev",
-		"false",
-		"--entry-file",
-		indexFile,
-		"--platform",
-		osName,
-		"--minify",
-		minify)
-	cmd.Dir = projectDir
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		log.Panic("cmd.StdoutPipe() failed with ", err)
-	}
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		log.Panic("cmd.StderrPipe() failed with ", err)
-	}
-	if err := cmd.Start(); err != nil {
-		log.Panic("cmd.Start() failed with ", err)
+	minify := "true"
+	if config.DisableMinify {
+		minify = "false"
 	}
 
-	go func() {
-		if _, err := io.Copy(os.Stdout, stdout); err != nil {
-			log.Panic("failed to copy stdout: ", err)
-		}
-	}()
-	go func() {
-		if _, err := io.Copy(os.Stderr, stderr); err != nil {
-			log.Panic("failed to copy stderr: ", err)
-		}
-	}()
-	if err := cmd.Wait(); err != nil {
-		log.Panic("cmd.Run() failed with ", err)
-	}
+	buildPath := config.ProjectDir + "build/CodePush"
+	bundleURL := buildPath + "/" + jsName
 
-	// if hermes is true, then we need to build the hbc file
-	// if hermes is false, then we need to build the js bundle file
-	// how to build the hbc file:
-	// 1. get the hermesc binary path
-	// 2. build the hbc file
-	// 3. replace the js bundle file with the hbc file
-	if hermes {
-		sysType := runtime.GOOS
-		exc := "/osx-bin/hermesc"
-		if sysType == "linux" {
-			exc = "/linux64-bin/hermesc"
-		}
-		if sysType == "windows" {
-			exc = "/win64-bin/hermesc.exe"
-		}
-		hbcUrl := projectDir + "build/CodePush/" + jsName + ".hbc"
-		cmd := exec.Command(
-			projectDir+"node_modules/react-native/sdks/hermesc"+exc,
-			"-emit-binary",
-			"-out",
-			hbcUrl,
-			bundelUrl,
-			// "-output-source-map",
-		)
-
-		cmd.Dir = projectDir
-		out, err := cmd.CombinedOutput()
-		if err != nil {
-			fmt.Printf("combined out:\n%s\n", string(out))
-			log.Panic("cmd.Run() failed with ", err)
-		}
-		err = os.Remove(bundelUrl)
-		if err != nil {
-			panic(err.Error())
-		}
-		data, err := os.ReadFile(hbcUrl)
-		if err != nil {
-			panic(err.Error())
-		}
-		err = os.WriteFile(bundelUrl, data, 0755)
-		if err != nil {
-			panic(err.Error())
-		}
-		err = os.Remove(hbcUrl)
-		if err != nil {
-			panic(err.Error())
-		}
-	}
-
-	hash, error := getHash(projectDir + "build")
-	if error != nil {
-		log.Panic("hash error", error.Error())
-	}
-	log.Println("✦ Hash: ", hash)
-	uuidStr, _ := uuid.NewUUID()
-	fileName := uuidStr.String() + ".zip"
-	log.Println("✦ Zipping bundle", fileName)
-	utils.Zip(projectDir+"build", fileName)
-
-	// exec.Command("open", projectDir+"build").Run()
-	os.RemoveAll(projectDir + "build")
-	log.Println("✦ Uploading bundle")
-
-	Url, err := url.Parse(remoteUrl + "/bundle/upload")
-	if err != nil {
-		log.Panic(err.Error())
-	}
-	pathName := fileName
-	req, err := newfileUploadRequest(Url.String(), authKey, map[string]string{"filename": fileName}, "file", pathName)
-	if err != nil {
-		log.Panic(err.Error())
-	}
-	uploadClient := &http.Client{}
-	resp, err := uploadClient.Do(req)
-	if err != nil {
-		log.Panic(err.Error())
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != 200 {
-		log.Println("✦ Upload fail", resp)
-		return
-	}
-
-	log.Println("✦ Bundle has been uploaded successfully.")
-	log.Println("✦ Creating a new bundle")
-
-	Url, err = url.Parse(remoteUrl + "/bundle/create")
-	if err != nil {
-		log.Panic("Server url error :", err)
-	}
-	fileInfo, _ := os.Stat(fileName)
-	size := fileInfo.Size()
-	key := uuidStr.String() + ".zip"
-	createBundleReq := types.CreateNewBundleRequest{
-		AppName:      appName,
-		Environment:  environment,
-		DownloadFile: key,
-		Description:  description,
-		AppVersion:   targetVersion,
-		Size:         size,
-		Hash:         hash,
-	}
-	jsonByte, _ := json.Marshal(createBundleReq)
-	req, _ = http.NewRequest("POST", Url.String(), bytes.NewBuffer(jsonByte))
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("x-auth-key", authKey)
-	createBundleClient := &http.Client{}
-	resp, err = createBundleClient.Do(req)
-	if err != nil {
-		log.Panic(err.Error())
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != 200 {
-		log.Println("✦ Create bundle fail", resp)
-		return
-	}
-	log.Println("✦ Bundle has been created successfully.")
-	os.RemoveAll(fileName)
+	return executeCommand(createBundleCommand(config, buildPath, bundleURL, indexFile, minify))
 }
 
 func getHash(path string) (string, error) {
@@ -267,27 +140,26 @@ func getAllFiles(dirPth string) (files []string, err error) {
 	if err != nil {
 		return nil, err
 	}
-	PthSep := string(os.PathSeparator)
+	pathSeparator := string(os.PathSeparator)
 
 	// Now, we go through each item in the directory.
 	for _, fi := range dir {
 		// If the item is a directory, we add it to our list of directories to check later.
 		if fi.IsDir() {
-			dirs = append(dirs, dirPth+PthSep+fi.Name())
+			dirs = append(dirs, dirPth+pathSeparator+fi.Name())
 			// We also call this function again to check inside this subdirectory.
-			getAllFiles(dirPth + PthSep + fi.Name())
+			temp, _ := getAllFiles(dirPth + pathSeparator + fi.Name())
+			files = append(files, temp...)
 		} else {
 			// If the item is a file, we add its path to our list of files.
-			files = append(files, dirPth+PthSep+fi.Name())
+			files = append(files, dirPth+pathSeparator+fi.Name())
 		}
 	}
 
 	// Now, we go through each subdirectory we found and get all the files inside them.
 	for _, table := range dirs {
 		temp, _ := getAllFiles(table)
-		for _, temp1 := range temp {
-			files = append(files, temp1)
-		}
+		files = append(files, temp...)
 	}
 	return files, nil
 }
@@ -325,4 +197,171 @@ func newfileUploadRequest(uri string, authKey string, params map[string]string, 
 		request.Header.Set("x-auth-key", authKey)
 	}
 	return request, err
+}
+
+func executeCommand(cmd *exec.Cmd) error {
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		log.Panic("cmd.StdoutPipe() failed with ", err)
+	}
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		log.Panic("cmd.StderrPipe() failed with ", err)
+	}
+	if err := cmd.Start(); err != nil {
+		log.Panic("cmd.Start() failed with ", err)
+	}
+
+	go func() {
+		if _, err := io.Copy(os.Stdout, stdout); err != nil {
+			log.Panic("failed to copy stdout: ", err)
+		}
+	}()
+	go func() {
+		if _, err := io.Copy(os.Stderr, stderr); err != nil {
+			log.Panic("failed to copy stderr: ", err)
+		}
+	}()
+	if err := cmd.Wait(); err != nil {
+		log.Panic("cmd.Run() failed with ", err)
+	}
+	return nil
+}
+
+func createBundleCommand(config BundleConfig, buildPath, bundleURL, indexFile, minify string) *exec.Cmd {
+	cmd := exec.Command(
+		"npx",
+		"react-native",
+		"bundle",
+		"--assets-dest",
+		buildPath,
+		"--bundle-output",
+		bundleURL,
+		"--dev",
+		"false",
+		"--entry-file",
+		indexFile,
+		"--platform",
+		config.OSName,
+		"--minify",
+		minify)
+	cmd.Dir = config.ProjectDir
+	return cmd
+}
+
+func processHermesBundle(config BundleConfig) error {
+	sysType := runtime.GOOS
+	exc := "/osx-bin/hermesc"
+	if sysType == "linux" {
+		exc = "/linux64-bin/hermesc"
+	}
+	if sysType == "windows" {
+		exc = "/win64-bin/hermesc.exe"
+	}
+	hbcUrl := config.ProjectDir + "build/CodePush/" + "main.jsbundle" + ".hbc"
+	cmd := exec.Command(
+		config.ProjectDir+"node_modules/react-native/sdks/hermesc"+exc,
+		"-emit-binary",
+		"-out",
+		hbcUrl,
+		config.ProjectDir+"build/CodePush/"+"main.jsbundle",
+		// "-output-source-map",
+	)
+
+	cmd.Dir = config.ProjectDir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Printf("combined out:\n%s\n", string(out))
+		log.Panic("cmd.Run() failed with ", err)
+	}
+	err = os.Remove(config.ProjectDir + "build/CodePush/" + "main.jsbundle")
+	if err != nil {
+		panic(err.Error())
+	}
+	data, err := os.ReadFile(hbcUrl)
+	if err != nil {
+		panic(err.Error())
+	}
+	err = os.WriteFile(config.ProjectDir+"build/CodePush/"+"main.jsbundle", data, 0755)
+	if err != nil {
+		panic(err.Error())
+	}
+	err = os.Remove(hbcUrl)
+	if err != nil {
+		panic(err.Error())
+	}
+	return nil
+}
+
+func createAndUploadBundle(config BundleConfig, fileName string, hash string) error {
+	log.Println("✦ Zipping bundle"+" "+config.AppName+" "+config.TargetVersion, fileName)
+	utils.Zip(config.ProjectDir+"build", fileName)
+
+	// exec.Command("open", config.ProjectDir+"build").Run()
+	os.RemoveAll(config.ProjectDir + "build")
+	log.Println("✦ Uploading bundle")
+
+	Url, err := url.Parse(config.RemoteURL + "/bundle/upload")
+	if err != nil {
+		log.Panic(err.Error())
+	}
+	pathName := fileName
+	req, err := newfileUploadRequest(Url.String(), config.AuthKey, map[string]string{"filename": fileName}, "file", pathName)
+	if err != nil {
+		log.Panic(err.Error())
+	}
+	uploadClient := &http.Client{}
+	resp, err := uploadClient.Do(req)
+	if err != nil {
+		log.Panic(err.Error())
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Panicf("Failed to read response body: %v", err)
+	}
+	if resp.StatusCode != 200 {
+		log.Println("✦ Upload fail", string(body))
+		return fmt.Errorf("upload failed: %s", resp.Status)
+	}
+	log.Println("✦ Bundle has been uploaded successfully.")
+	log.Println("✦ Creating a new bundle")
+
+	Url, err = url.Parse(config.RemoteURL + "/bundle/create")
+	if err != nil {
+		log.Panic("Server url error :", err)
+	}
+	fileInfo, _ := os.Stat(fileName)
+	size := fileInfo.Size()
+	key := uuid.New().String() + ".zip"
+	createBundleReq := types.CreateNewBundleRequest{
+		AppName:      config.AppName,
+		Environment:  config.Environment,
+		DownloadFile: key,
+		Description:  config.Description,
+		AppVersion:   config.TargetVersion,
+		Size:         size,
+		Hash:         hash,
+	}
+	jsonByte, _ := json.Marshal(createBundleReq)
+	req, _ = http.NewRequest("POST", Url.String(), bytes.NewBuffer(jsonByte))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("x-auth-key", config.AuthKey)
+	createBundleClient := &http.Client{}
+	resp, err = createBundleClient.Do(req)
+	if err != nil {
+		log.Panic(err.Error())
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			log.Panicf("Failed to read error response: %v", err)
+		}
+		log.Printf("✦ Create bundle failed. Status: %s, Response: %s", resp.Status, string(body))
+		return fmt.Errorf("failed to create bundle: %s", resp.Status)
+	}
+	log.Println("✦ Bundle has been created successfully.")
+	os.RemoveAll(fileName)
+	return nil
 }
