@@ -1,8 +1,6 @@
 package service
 
 import (
-	"errors"
-
 	"github.com/SwishHQ/spread/src/model"
 	"github.com/SwishHQ/spread/src/repository"
 	"github.com/SwishHQ/spread/utils"
@@ -10,7 +8,7 @@ import (
 
 type AuthKeyService interface {
 	CreateAuthKey(name string, username string) (string, error)
-	ValidateAuthKey(key string) (bool, error)
+	GetByAuthKey(key string) (*model.AuthKey, error)
 }
 
 type authKeyService struct {
@@ -34,13 +32,10 @@ func (s *authKeyService) CreateAuthKey(name string, username string) (string, er
 	return authKey.Key, nil
 }
 
-func (s *authKeyService) ValidateAuthKey(key string) (bool, error) {
+func (s *authKeyService) GetByAuthKey(key string) (*model.AuthKey, error) {
 	authKey, err := s.authKeyRepository.GetById(key)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
-	if authKey == nil {
-		return false, errors.New("auth key not found")
-	}
-	return true, nil
+	return authKey, nil
 }

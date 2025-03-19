@@ -2,6 +2,7 @@ package controller
 
 import (
 	"github.com/SwishHQ/spread/logger"
+	"github.com/SwishHQ/spread/src/model"
 	"github.com/SwishHQ/spread/src/service"
 	"github.com/SwishHQ/spread/types"
 	"github.com/SwishHQ/spread/utils"
@@ -24,7 +25,9 @@ func NewBundleController(bundleService service.BundleService) BundleController {
 }
 
 func (bundleController *bundleControllerImpl) UploadBundle(c *fiber.Ctx) error {
-	logger.L.Info("In UploadBundle: Uploading bundle", zap.Any("filename", c.FormValue("fileName")))
+	authKey := c.Locals("authKey").(*model.AuthKey)
+	keyUser := authKey.CreatedBy
+	logger.L.Info("In UploadBundle: Uploading bundle", zap.Any("filename", c.FormValue("fileName")), zap.Any("keyUser", keyUser))
 	fileName := c.FormValue("filename")
 	if fileName == "" {
 		logger.L.Error("In UploadBundle: File name is required")
@@ -53,7 +56,10 @@ func (bundleController *bundleControllerImpl) CreateNewBundle(c *fiber.Ctx) erro
 		logger.L.Error("In CreateNewBundle: Validation errors", zap.Any("validationErrors", validationErrors))
 		return utils.ValidationErrorResponse(c, validationErrors)
 	}
-	bundle, err := bundleController.bundleService.CreateNewBundle(&createNewBundleRequest)
+	authKey := c.Locals("authKey").(*model.AuthKey)
+	createdBy := authKey.CreatedBy
+	bundle, err := bundleController.bundleService.CreateNewBundle(&createNewBundleRequest, createdBy)
+	logger.L.Info("In CreateNewBundle: Creating new bundle", zap.Any("keyUser", createdBy), zap.Any("createNewBundleRequest", createNewBundleRequest))
 	if err != nil {
 		logger.L.Error("In CreateNewBundle: Failed to create new bundle", zap.Error(err))
 		return utils.ErrorResponse(c, err.Error())
@@ -69,6 +75,11 @@ func (bundleController *bundleControllerImpl) Rollback(c *fiber.Ctx) error {
 		logger.L.Error("In Rollback: Validation errors", zap.Any("validationErrors", validationErrors))
 		return utils.ValidationErrorResponse(c, validationErrors)
 	}
+	// log key user as audit log
+	authKey := c.Locals("authKey").(*model.AuthKey)
+	keyUser := authKey.CreatedBy
+	logger.L.Info("In Rollback", zap.Any("keyUser", keyUser), zap.Any("rollbackRequest", rollbackRequest))
+
 	rollbackBundle, err := bundleController.bundleService.Rollback(&rollbackRequest)
 	if err != nil {
 		logger.L.Error("In Rollback: Failed to rollback", zap.Error(err))

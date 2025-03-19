@@ -8,17 +8,18 @@ import (
 )
 
 func AuthKeyMiddleware(c *fiber.Ctx, authKeyService service.AuthKeyService) error {
-	authKey := c.Get("x-auth-key")
-	if authKey == "" {
+	key := c.Get("x-auth-key")
+	if key == "" {
 		logger.L.Error("In AuthKeyMiddleware: No auth key found")
 		return utils.UnauthorizedResponse(c, "Unauthorized")
 	}
-	valid, err := authKeyService.ValidateAuthKey(authKey)
+	authKey, err := authKeyService.GetByAuthKey(key)
 	if err != nil {
 		return utils.ErrorResponse(c, err.Error())
 	}
-	if !valid {
+	if authKey == nil {
 		return utils.UnauthorizedResponse(c, "Unauthorized")
 	}
+	c.Locals("authKey", authKey)
 	return c.Next()
 }

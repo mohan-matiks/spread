@@ -30,7 +30,7 @@ type BundleConfig struct {
 	TargetVersion       string
 	ProjectDir          string
 	OSName              string
-	IsTypescriptProject bool
+	IsTypescriptProject string
 	DisableMinify       bool
 	Hermes              bool
 }
@@ -92,7 +92,7 @@ func buildBundle(config BundleConfig) error {
 	}
 
 	indexFile := "index.js"
-	if config.IsTypescriptProject {
+	if config.IsTypescriptProject == "true" {
 		indexFile = "index.tsx"
 	}
 
@@ -333,11 +333,10 @@ func createAndUploadBundle(config BundleConfig, fileName string, hash string) er
 	}
 	fileInfo, _ := os.Stat(fileName)
 	size := fileInfo.Size()
-	key := uuid.New().String() + ".zip"
 	createBundleReq := types.CreateNewBundleRequest{
 		AppName:      config.AppName,
 		Environment:  config.Environment,
-		DownloadFile: key,
+		DownloadFile: fileName,
 		Description:  config.Description,
 		AppVersion:   config.TargetVersion,
 		Size:         size,

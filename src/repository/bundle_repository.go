@@ -19,6 +19,7 @@ type BundleRepository interface {
 	GetByEnvironmentAndVersion(ctx context.Context, environment string, version string) (*model.Bundle, error)
 	GetNextSeqByEnvironmentIdAndVersionId(ctx context.Context, environmentId primitive.ObjectID, versionId primitive.ObjectID) (int64, error)
 	GetBySequenceIdEnvironmentIdAndVersionId(ctx context.Context, sequenceId int64, environmentId primitive.ObjectID, versionId primitive.ObjectID) (*model.Bundle, error)
+	GetByLabel(ctx context.Context, label string) (*model.Bundle, error)
 	AddActive(ctx context.Context, id primitive.ObjectID) error
 	AddFailed(ctx context.Context, id primitive.ObjectID) error
 	AddInstalled(ctx context.Context, id primitive.ObjectID) error
@@ -94,6 +95,16 @@ func (bundleRepository *bundleRepository) GetByEnvironmentAndVersion(ctx context
 	collection := bundleRepository.Connection.Collection("bundles")
 	var bundle model.Bundle
 	err := collection.FindOne(ctx, bson.M{"environment": environment, "version": version, "isValid": true}).Decode(&bundle)
+	if err != nil {
+		return nil, err
+	}
+	return &bundle, nil
+}
+
+func (bundleRepository *bundleRepository) GetByLabel(ctx context.Context, label string) (*model.Bundle, error) {
+	collection := bundleRepository.Connection.Collection("bundles")
+	var bundle model.Bundle
+	err := collection.FindOne(ctx, bson.M{"label": label, "isValid": true}).Decode(&bundle)
 	if err != nil {
 		return nil, err
 	}

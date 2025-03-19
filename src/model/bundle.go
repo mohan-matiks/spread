@@ -22,6 +22,7 @@ type Bundle struct {
 	Description   string             `json:"description" bson:"description"`
 	Label         string             `json:"label" bson:"label"`
 	IsValid       bool               `json:"isValid" bson:"isValid" default:"true"`
+	CreatedBy     string             `json:"createdBy" bson:"createdBy"`
 	CreatedAt     time.Time          `json:"createdAt" bson:"createdAt"`
 	UpdatedAt     time.Time          `json:"updatedAt" bson:"updatedAt"`
 }

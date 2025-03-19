@@ -21,8 +21,9 @@ import (
 type BundleService interface {
 	UploadBundle(fileName string, file *multipart.FileHeader) error
 	Rollback(rollbackRequest *types.RollbackRequest) (*model.Bundle, error)
-	CreateNewBundle(createNewBundleRequest *types.CreateNewBundleRequest) (*model.Bundle, error)
+	CreateNewBundle(createNewBundleRequest *types.CreateNewBundleRequest, createdBy string) (*model.Bundle, error)
 	GetBundleById(id primitive.ObjectID) (*model.Bundle, error)
+	GetBundleByLabel(label string) (*model.Bundle, error)
 	AddActive(ctx context.Context, id primitive.ObjectID) error
 	AddFailed(ctx context.Context, id primitive.ObjectID) error
 	AddInstalled(ctx context.Context, id primitive.ObjectID) error
@@ -68,7 +69,7 @@ func (bundleService *bundleService) UploadBundle(fileName string, file *multipar
 
 // we check if a version (0.0.1) exists, if it does then we create a new bundle and set the version id to the bundle
 // if it doesn't exist then we create a new version and set the bundle id to the version
-func (bundleService *bundleService) CreateNewBundle(payload *types.CreateNewBundleRequest) (*model.Bundle, error) {
+func (bundleService *bundleService) CreateNewBundle(payload *types.CreateNewBundleRequest, createdBy string) (*model.Bundle, error) {
 	// Retrieve the app by name
 	app, err := bundleService.appService.GetAppByName(context.Background(), payload.AppName)
 	if err != nil {
@@ -106,6 +107,7 @@ func (bundleService *bundleService) CreateNewBundle(payload *types.CreateNewBund
 			Installed:     0,
 			IsValid:       true,
 			Label:         "v" + strconv.Itoa(int(versionNumber)) + ":" + strconv.Itoa(1),
+			CreatedBy:     createdBy,
 			SequenceId:    1,
 		}
 
@@ -222,6 +224,17 @@ func (bundleService *bundleService) Rollback(rollbackRequest *types.RollbackRequ
 		return nil, err
 	}
 	return rollbackBundle, nil
+}
+
+func (bundleService *bundleService) GetBundleByLabel(label string) (*model.Bundle, error) {
+	bundle, err := bundleService.bundleRepository.GetByLabel(context.Background(), label)
+	if err == mongo.ErrNoDocuments {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return bundle, nil
 }
 
 func (bundleService *bundleService) GetBundleByHash(hash string) (*model.Bundle, error) {

@@ -15,7 +15,7 @@ var description string
 var targetVersion string
 var projectDir string
 var osName string
-var isTypescriptProject bool
+var isTypescriptProject string
 var disableMinify bool
 var hermes bool
 
@@ -47,6 +47,7 @@ var releaseCmd = &cobra.Command{
 			fmt.Println("Error: --os-name flag is required")
 			return
 		}
+
 		cli.PushBundle(
 			cli.BundleConfig{
 				RemoteURL:           remoteURL,
@@ -75,7 +76,7 @@ func init() {
 	releaseCmd.Flags().StringVarP(&osName, "os-name", "o", "", "OS name (required)")
 
 	releaseCmd.Flags().StringVarP(&projectDir, "project-dir", "p", "", "Project directory (optional)")
-	releaseCmd.Flags().BoolVarP(&isTypescriptProject, "is-typescript", "i", false, "Is typescript project (optional)")
+	releaseCmd.Flags().StringVarP(&isTypescriptProject, "is-typescript", "i", "", "Is typescript project (optional)")
 	releaseCmd.Flags().BoolVarP(&disableMinify, "disable-minify", "m", false, "Disable minify (optional)")
 	releaseCmd.Flags().BoolVarP(&hermes, "hermes", "z", false, "Hermes (optional)")
 	releaseCmd.Flags().StringVarP(&description, "description", "d", "", "Description (optional)")
