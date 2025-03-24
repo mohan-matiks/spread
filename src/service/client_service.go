@@ -78,7 +78,7 @@ func (s *clientService) CheckUpdate(environmentKey string, appVersion string, bu
 		updateInfo = &types.UpdateInfo{
 			DownloadUrl:            utils.GetBaseBucketUrl(config.ENV) + "/" + bundle.DownloadFile,
 			Description:            bundle.Description,
-			IsAvailable:            true,
+			IsAvailable:            bundle.IsValid,
 			IsDisabled:             false,
 			IsMandatory:            false,
 			TargetBinaryRange:      appVersion,

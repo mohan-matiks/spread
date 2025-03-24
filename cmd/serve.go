@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"time"
@@ -118,10 +119,11 @@ func serve(cmd *cobra.Command, args []string) {
 
 	// Serve static files from the React app build directory
 	serveStatic := os.Getenv("SERVE_STATIC")
+	fmt.Println("serveStatic", serveStatic)
 	if serveStatic == "true" {
 		staticDir := os.Getenv("STATIC_DIR")
 		if staticDir == "" {
-			staticDir = "./web/build" // Default static directory
+			staticDir = "../web/build" // Default static directory
 		}
 
 		app.Use("/", filesystem.New(filesystem.Config{
