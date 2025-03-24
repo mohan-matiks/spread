@@ -54,15 +54,17 @@ func serve(cmd *cobra.Command, args []string) {
 			staticDir = "./web/dist" // Default static directory
 		}
 
-		app.Static("/", staticDir)
+		app.Static("/web/", staticDir)
 
 		// Handle React Router paths by serving index.html for any unmatched routes
-		app.Static("*", "./web/dist/index.html")
+		app.Get("/web/*", func(c *fiber.Ctx) error {
+			return c.SendFile(staticDir + "/index.html")
+		})
 
 		log.Println("Serving static files from: " + staticDir)
 	}
 
-	app.Get("/api/health", func(c *fiber.Ctx) error {
+	app.Get("/", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{
 			"service":   "spread",
 			"status":    "running",

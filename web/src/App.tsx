@@ -40,7 +40,7 @@ const DashboardLayout = () => {
 const App: React.FC = () => {
     return (
         <ThemeProvider theme={theme}>
-            <BrowserRouter>
+            <BrowserRouter basename="/web">
                 <NavigationProvider>
                     {/* AuthInitializer checks token on app load */}
                     <AuthInitializer>
