@@ -6,8 +6,6 @@ import (
 	"os"
 	"time"
 
-	"net/http"
-
 	"github.com/SwishHQ/spread/config"
 	"github.com/SwishHQ/spread/middleware"
 	"github.com/SwishHQ/spread/pkg"
@@ -16,7 +14,6 @@ import (
 	"github.com/SwishHQ/spread/src/service"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
-	"github.com/gofiber/fiber/v2/middleware/filesystem"
 	recover "github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/spf13/cobra"
 )
@@ -45,6 +42,24 @@ func serve(cmd *cobra.Command, args []string) {
 	db, errMongoConnection := pkg.MongoConnection()
 	if errMongoConnection != nil {
 		log.Fatal(errMongoConnection)
+	}
+
+	// Serve static files from the React app build directory
+	serveStatic := os.Getenv("SERVE_STATIC")
+	fmt.Println("serveStatic", serveStatic)
+	if serveStatic == "true" {
+		staticDir := os.Getenv("STATIC_DIR")
+		fmt.Println("staticDir", staticDir)
+		if staticDir == "" {
+			staticDir = "./web/dist" // Default static directory
+		}
+
+		app.Static("/", staticDir)
+
+		// Handle React Router paths by serving index.html for any unmatched routes
+		app.Static("*", "./web/dist/index.html")
+
+		log.Println("Serving static files from: " + staticDir)
 	}
 
 	app.Get("/api/health", func(c *fiber.Ctx) error {
@@ -116,29 +131,6 @@ func serve(cmd *cobra.Command, args []string) {
 	bundleGroup.Post("/create", bundleController.CreateNewBundle)
 	bundleGroup.Post("/upload", bundleController.UploadBundle)
 	bundleGroup.Post("/rollback", bundleController.Rollback)
-
-	// Serve static files from the React app build directory
-	serveStatic := os.Getenv("SERVE_STATIC")
-	fmt.Println("serveStatic", serveStatic)
-	if serveStatic == "true" {
-		staticDir := os.Getenv("STATIC_DIR")
-		if staticDir == "" {
-			staticDir = "../web/build" // Default static directory
-		}
-
-		app.Use("/", filesystem.New(filesystem.Config{
-			Root:       http.Dir(staticDir),
-			PathPrefix: "",
-			Browse:     false,
-		}))
-
-		// Handle React Router paths by serving index.html for any unmatched routes
-		app.Use("/*", func(c *fiber.Ctx) error {
-			return c.SendFile(staticDir + "/index.html")
-		})
-
-		log.Println("Serving static files from: " + staticDir)
-	}
 
 	// Start server
 	log.Println("Server started on port " + config.ServerPort)
