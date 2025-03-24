@@ -15,6 +15,7 @@ type EnvironmentRepository interface {
 	Insert(ctx context.Context, environment *model.Environment) (*model.Environment, error)
 	GetByKey(ctx context.Context, key string) (*model.Environment, error)
 	GetByAppIdAndName(ctx context.Context, appId primitive.ObjectID, name string) (*model.Environment, error)
+	GetAllByAppId(ctx context.Context, appId primitive.ObjectID) ([]*model.Environment, error)
 }
 
 type environmentRepositoryImpl struct {
@@ -56,4 +57,24 @@ func (environmentRepository *environmentRepositoryImpl) GetByAppIdAndName(ctx co
 		return nil, err
 	}
 	return &environment, nil
+}
+
+func (environmentRepository *environmentRepositoryImpl) GetAllByAppId(ctx context.Context, appId primitive.ObjectID) ([]*model.Environment, error) {
+	collection := environmentRepository.Connection.Collection("environments")
+	filter := bson.M{"appId": appId}
+	cursor, err := collection.Find(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var environments []*model.Environment
+	for cursor.Next(ctx) {
+		var environment model.Environment
+		if err := cursor.Decode(&environment); err != nil {
+			return nil, err
+		}
+		environments = append(environments, &environment)
+	}
+	return environments, nil
 }

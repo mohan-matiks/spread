@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 
 	"github.com/SwishHQ/spread/src/model"
 	"github.com/SwishHQ/spread/src/repository"
@@ -14,6 +15,8 @@ type VersionService interface {
 	UpdateVersionCurrentBundleIdByVersionId(ctx context.Context, id primitive.ObjectID, currentBundleId primitive.ObjectID) (*model.Version, error)
 	GetVersionByEnvironmentIdAndAppVersion(ctx context.Context, environmentId primitive.ObjectID, appVersion string) (*model.Version, error)
 	GetLatestVersionByEnvironmentId(ctx context.Context, environmentId primitive.ObjectID) (*model.Version, error)
+	GetAllVersionsByEnvironmentId(ctx context.Context, environmentId primitive.ObjectID) ([]*model.Version, error)
+	GetByVersionId(ctx context.Context, versionId primitive.ObjectID) (*model.Version, error)
 }
 
 type versionService struct {
@@ -55,6 +58,25 @@ func (v *versionService) GetLatestVersionByEnvironmentId(ctx context.Context, en
 	version, err := v.versionRepository.GetLatestVersionByEnvironmentId(ctx, environmentId)
 	if err != nil {
 		return nil, err
+	}
+	return version, nil
+}
+
+func (v *versionService) GetAllVersionsByEnvironmentId(ctx context.Context, environmentId primitive.ObjectID) ([]*model.Version, error) {
+	versions, err := v.versionRepository.GetAllByEnvironmentId(ctx, environmentId)
+	if err != nil {
+		return nil, err
+	}
+	return versions, nil
+}
+
+func (v *versionService) GetByVersionId(ctx context.Context, versionId primitive.ObjectID) (*model.Version, error) {
+	version, err := v.versionRepository.GetById(ctx, versionId)
+	if err != nil {
+		return nil, err
+	}
+	if version == nil {
+		return nil, errors.New("version not found")
 	}
 	return version, nil
 }

@@ -18,6 +18,8 @@ var (
 	CloudflareR2Bucket          = GetEnv("CLOUDFLARE_R2_BUCKET", "")
 	CloudflareR2AccessKeyID     = GetEnv("CLOUDFLARE_R2_ACCESS_KEY_ID", "")
 	CloudflareR2SecretAccessKey = GetEnv("CLOUDFLARE_R2_SECRET_ACCESS_KEY", "")
+	ServeStatic                 = GetEnv("SERVE_STATIC", "false")
+	StaticDir                   = GetEnv("STATIC_DIR", "./web/build")
 )
 
 func GetEnv(key, defaultValue string) string {

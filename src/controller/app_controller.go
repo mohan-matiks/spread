@@ -14,6 +14,7 @@ import (
 type AppController interface {
 	CreateApp(c *fiber.Ctx) error
 	GetApps(c *fiber.Ctx) error
+	GetAppById(c *fiber.Ctx) error
 }
 
 type appControllerImpl struct {
@@ -49,4 +50,14 @@ func (controller *appControllerImpl) GetApps(c *fiber.Ctx) error {
 		return utils.ErrorResponse(c, "Error getting apps")
 	}
 	return utils.SuccessResponse(c, apps)
+}
+
+func (controller *appControllerImpl) GetAppById(c *fiber.Ctx) error {
+	id := c.Params("id")
+	app, err := controller.appService.GetAppById(context.Background(), id)
+	if err != nil {
+		logger.L.Error("In GetAppById: Error getting app", zap.Error(err))
+		return utils.ErrorResponse(c, err.Error())
+	}
+	return utils.SuccessResponse(c, app)
 }

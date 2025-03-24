@@ -154,3 +154,10 @@ func PathExists(path string) (bool, error) {
 	}
 	return false, err
 }
+
+func GetBaseBucketUrl(env string) string {
+	if env == "production" {
+		return PROD_BASE_BUCKET_URL
+	}
+	return DEV_BASE_BUCKET_URL
+}

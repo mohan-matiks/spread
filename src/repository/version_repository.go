@@ -17,6 +17,8 @@ type VersionRepository interface {
 	UpdateCurrentBundleId(ctx context.Context, id primitive.ObjectID, currentBundleId primitive.ObjectID) (*model.Version, error)
 	GetByEnvironmentAndVersion(ctx context.Context, environment string, version string) (*model.Version, error)
 	GetLatestVersionByEnvironmentId(ctx context.Context, environmentId primitive.ObjectID) (*model.Version, error)
+	GetAllByEnvironmentId(ctx context.Context, environmentId primitive.ObjectID) ([]*model.Version, error)
+	GetById(ctx context.Context, id primitive.ObjectID) (*model.Version, error)
 }
 
 type versionRepository struct {
@@ -81,4 +83,37 @@ func (v *versionRepository) GetLatestVersionByEnvironmentId(ctx context.Context,
 		return nil, err
 	}
 	return &versionDocument, nil
+}
+
+func (v *versionRepository) GetAllByEnvironmentId(ctx context.Context, environmentId primitive.ObjectID) ([]*model.Version, error) {
+	collection := v.Connection.Collection("versions")
+	filter := bson.M{"environmentId": environmentId}
+	cursor, err := collection.Find(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var versions []*model.Version
+	for cursor.Next(ctx) {
+		var version model.Version
+		if err := cursor.Decode(&version); err != nil {
+			return nil, err
+		}
+		versions = append(versions, &version)
+	}
+	return versions, nil
+}
+
+func (v *versionRepository) GetById(ctx context.Context, id primitive.ObjectID) (*model.Version, error) {
+	collection := v.Connection.Collection("versions")
+	var version model.Version
+	err := collection.FindOne(ctx, bson.M{"_id": id}).Decode(&version)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &version, nil
 }

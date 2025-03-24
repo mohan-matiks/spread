@@ -1,5 +1,6 @@
 package utils
 
 var (
-	BASE_BUCKET_URL = "https://dev-spread-bucket.justswish.in"
+	DEV_BASE_BUCKET_URL  = "https://dev-spread-bucket.justswish.in"
+	PROD_BASE_BUCKET_URL = "https://spread-bucket.justswish.in"
 )

@@ -12,6 +12,7 @@ import (
 type UserController interface {
 	CreateUser(c *fiber.Ctx) error
 	LoginUser(c *fiber.Ctx) error
+	GetUser(c *fiber.Ctx) error
 }
 
 type userController struct {
@@ -36,7 +37,20 @@ func (c *userController) CreateUser(ctx *fiber.Ctx) error {
 		logger.L.Error("In CreateUser: Error creating user", zap.Error(err))
 		return utils.ErrorResponse(ctx, err.Error())
 	}
-	return ctx.Status(fiber.StatusCreated).JSON(createdUser)
+	return utils.SuccessResponse(ctx, createdUser)
+}
+
+func (c *userController) GetUser(ctx *fiber.Ctx) error {
+	// Get userId from the context
+	// Get user from context
+	user := ctx.Locals("user")
+	if user == nil {
+		logger.L.Error("In GetUser: User not found in context")
+		return ctx.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"error": "User not found",
+		})
+	}
+	return utils.SuccessResponse(ctx, user)
 }
 
 func (c *userController) LoginUser(ctx *fiber.Ctx) error {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/SwishHQ/spread/config"
 	"github.com/SwishHQ/spread/logger"
 	"github.com/SwishHQ/spread/types"
 	"github.com/SwishHQ/spread/utils"
@@ -75,7 +76,7 @@ func (s *clientService) CheckUpdate(environmentKey string, appVersion string, bu
 
 	if bundle.Hash != bundleHash && appVersion == version.AppVersion {
 		updateInfo = &types.UpdateInfo{
-			DownloadUrl:            utils.BASE_BUCKET_URL + "/" + bundle.DownloadFile,
+			DownloadUrl:            utils.GetBaseBucketUrl(config.ENV) + "/" + bundle.DownloadFile,
 			Description:            bundle.Description,
 			IsAvailable:            true,
 			IsDisabled:             false,

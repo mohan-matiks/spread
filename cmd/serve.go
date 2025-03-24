@@ -2,7 +2,10 @@ package cmd
 
 import (
 	"log"
+	"os"
 	"time"
+
+	"net/http"
 
 	"github.com/SwishHQ/spread/config"
 	"github.com/SwishHQ/spread/middleware"
@@ -12,6 +15,7 @@ import (
 	"github.com/SwishHQ/spread/src/service"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/gofiber/fiber/v2/middleware/filesystem"
 	recover "github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/spf13/cobra"
 )
@@ -42,7 +46,7 @@ func serve(cmd *cobra.Command, args []string) {
 		log.Fatal(errMongoConnection)
 	}
 
-	app.Get("/", func(c *fiber.Ctx) error {
+	app.Get("/api/health", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{
 			"service":   "spread",
 			"status":    "running",
@@ -68,6 +72,7 @@ func serve(cmd *cobra.Command, args []string) {
 
 	versionRepository := repository.NewVersionRepository(db)
 	versionService := service.NewVersionService(versionRepository)
+	versionController := controller.NewVersionController(versionService)
 
 	bundleRepository := repository.NewBundleRepository(db)
 	bundleService := service.NewBundleService(appService, versionService, environmentService, bundleRepository)
@@ -78,8 +83,8 @@ func serve(cmd *cobra.Command, args []string) {
 
 	// public endpoints
 	app.Post("/login", userController.LoginUser)
-	app.Get("/apps", appController.GetApps)
-	app.Post("/user/create", userController.CreateUser)
+
+	// app.Post("/user/create", userController.CreateUser)
 
 	// code-push compatible endpoints
 	app.Get("/v0.1/public/codepush/update_check", clientController.CheckUpdate)
@@ -90,8 +95,17 @@ func serve(cmd *cobra.Command, args []string) {
 	coreGroup := app.Group("/core", func(c *fiber.Ctx) error {
 		return middleware.AuthMiddleware(c, userService)
 	})
+	coreGroup.Get("/user", userController.GetUser)
 	coreGroup.Post("/environment", environmentController.CreateEnvironment)
+	coreGroup.Get("/environment/:appId", environmentController.GetAllEnvironmentsByAppId)
+	coreGroup.Get("/version/:versionId", versionController.GetByVersionId)
+	coreGroup.Get("/version", versionController.GetAll)
+	coreGroup.Get("/version/bundle/:versionId", bundleController.GetAllByVersionId)
+	// coreGroup.Put("/version/:id/bundle/:bundleId/activate", bundleController.ActivateBundle)
+	// coreGroup.Put("/version/bundle/:bundleId/mandatory", bundleController.ToggleMandatory)
+	coreGroup.Get("/app", appController.GetApps)
 	coreGroup.Post("/app", appController.CreateApp)
+	coreGroup.Get("/app/:id", appController.GetAppById)
 	coreGroup.Post("/auth-key/create", authKeyController.CreateAuthKey)
 
 	// auth key protected endpoints
@@ -101,6 +115,28 @@ func serve(cmd *cobra.Command, args []string) {
 	bundleGroup.Post("/create", bundleController.CreateNewBundle)
 	bundleGroup.Post("/upload", bundleController.UploadBundle)
 	bundleGroup.Post("/rollback", bundleController.Rollback)
+
+	// Serve static files from the React app build directory
+	serveStatic := os.Getenv("SERVE_STATIC")
+	if serveStatic == "true" {
+		staticDir := os.Getenv("STATIC_DIR")
+		if staticDir == "" {
+			staticDir = "./web/build" // Default static directory
+		}
+
+		app.Use("/", filesystem.New(filesystem.Config{
+			Root:       http.Dir(staticDir),
+			PathPrefix: "",
+			Browse:     false,
+		}))
+
+		// Handle React Router paths by serving index.html for any unmatched routes
+		app.Use("/*", func(c *fiber.Ctx) error {
+			return c.SendFile(staticDir + "/index.html")
+		})
+
+		log.Println("Serving static files from: " + staticDir)
+	}
 
 	// Start server
 	log.Println("Server started on port " + config.ServerPort)

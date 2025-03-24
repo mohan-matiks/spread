@@ -20,6 +20,7 @@ type BundleRepository interface {
 	GetNextSeqByEnvironmentIdAndVersionId(ctx context.Context, environmentId primitive.ObjectID, versionId primitive.ObjectID) (int64, error)
 	GetBySequenceIdEnvironmentIdAndVersionId(ctx context.Context, sequenceId int64, environmentId primitive.ObjectID, versionId primitive.ObjectID) (*model.Bundle, error)
 	GetByLabel(ctx context.Context, label string) (*model.Bundle, error)
+	GetAllByVersionId(ctx context.Context, versionId primitive.ObjectID) ([]*model.Bundle, error)
 	AddActive(ctx context.Context, id primitive.ObjectID) error
 	AddFailed(ctx context.Context, id primitive.ObjectID) error
 	AddInstalled(ctx context.Context, id primitive.ObjectID) error
@@ -158,4 +159,18 @@ func (bundleRepository *bundleRepository) DecrementActive(ctx context.Context, i
 		return err
 	}
 	return nil
+}
+
+func (bundleRepository *bundleRepository) GetAllByVersionId(ctx context.Context, versionId primitive.ObjectID) ([]*model.Bundle, error) {
+	collection := bundleRepository.Connection.Collection("bundles")
+	var bundles []*model.Bundle
+	cursor, err := collection.Find(ctx, bson.M{"versionId": versionId, "isValid": true})
+	if err != nil {
+		return nil, err
+	}
+	err = cursor.All(ctx, &bundles)
+	if err != nil {
+		return nil, err
+	}
+	return bundles, nil
 }

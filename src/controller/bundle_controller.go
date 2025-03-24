@@ -7,12 +7,14 @@ import (
 	"github.com/SwishHQ/spread/types"
 	"github.com/SwishHQ/spread/utils"
 	"github.com/gofiber/fiber/v2"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.uber.org/zap"
 )
 
 type BundleController interface {
 	UploadBundle(c *fiber.Ctx) error
 	CreateNewBundle(c *fiber.Ctx) error
+	GetAllByVersionId(c *fiber.Ctx) error
 	Rollback(c *fiber.Ctx) error
 }
 
@@ -93,4 +95,17 @@ func (bundleController *bundleControllerImpl) Rollback(c *fiber.Ctx) error {
 	}
 	logger.L.Info("In Rollback: Rollback bundle found", zap.Any("rollbackBundle", rollbackBundle))
 	return utils.SuccessResponse(c, rollbackBundle)
+}
+
+func (bundleController *bundleControllerImpl) GetAllByVersionId(c *fiber.Ctx) error {
+	versionId := c.Params("versionId")
+	versionIdPrimitive, err := primitive.ObjectIDFromHex(versionId)
+	if err != nil {
+		return utils.ErrorResponse(c, err.Error())
+	}
+	bundles, err := bundleController.bundleService.GetBundlesByVersionId(versionIdPrimitive)
+	if err != nil {
+		return utils.ErrorResponse(c, err.Error())
+	}
+	return utils.SuccessResponse(c, bundles)
 }

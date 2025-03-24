@@ -6,11 +6,13 @@ import (
 	"github.com/SwishHQ/spread/types"
 	"github.com/SwishHQ/spread/utils"
 	"github.com/gofiber/fiber/v2"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.uber.org/zap"
 )
 
 type EnvironmentController interface {
 	CreateEnvironment(c *fiber.Ctx) error
+	GetAllEnvironmentsByAppId(c *fiber.Ctx) error
 }
 
 type environmentControllerImpl struct {
@@ -38,4 +40,17 @@ func (environmentController *environmentControllerImpl) CreateEnvironment(c *fib
 		"key":  environment.Key,
 		"name": environment.Name,
 	})
+}
+
+func (environmentController *environmentControllerImpl) GetAllEnvironmentsByAppId(c *fiber.Ctx) error {
+	appId := c.Params("appId")
+	appIdObjectID, err := primitive.ObjectIDFromHex(appId)
+	if err != nil {
+		return utils.ErrorResponse(c, err.Error())
+	}
+	environments, err := environmentController.environmentService.GetAllEnvironmentsByAppId(c.Context(), appIdObjectID)
+	if err != nil {
+		return utils.ErrorResponse(c, err.Error())
+	}
+	return utils.SuccessResponse(c, environments)
 }

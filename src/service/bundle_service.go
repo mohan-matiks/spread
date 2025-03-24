@@ -7,6 +7,7 @@ import (
 	"mime/multipart"
 	"strconv"
 
+	"github.com/SwishHQ/spread/config"
 	"github.com/SwishHQ/spread/logger"
 	"github.com/SwishHQ/spread/pkg"
 	"github.com/SwishHQ/spread/src/model"
@@ -24,6 +25,7 @@ type BundleService interface {
 	CreateNewBundle(createNewBundleRequest *types.CreateNewBundleRequest, createdBy string) (*model.Bundle, error)
 	GetBundleById(id primitive.ObjectID) (*model.Bundle, error)
 	GetBundleByLabel(label string) (*model.Bundle, error)
+	GetBundlesByVersionId(versionId primitive.ObjectID) ([]*model.Bundle, error)
 	AddActive(ctx context.Context, id primitive.ObjectID) error
 	AddFailed(ctx context.Context, id primitive.ObjectID) error
 	AddInstalled(ctx context.Context, id primitive.ObjectID) error
@@ -235,6 +237,18 @@ func (bundleService *bundleService) GetBundleByLabel(label string) (*model.Bundl
 		return nil, err
 	}
 	return bundle, nil
+}
+
+func (bundleService *bundleService) GetBundlesByVersionId(versionId primitive.ObjectID) ([]*model.Bundle, error) {
+	bundles, err := bundleService.bundleRepository.GetAllByVersionId(context.Background(), versionId)
+	if err != nil {
+		return nil, err
+	}
+	// loop through bundles append base bucket url to downloadUrl
+	for i, bundle := range bundles {
+		bundles[i].DownloadFile = utils.GetBaseBucketUrl(config.ENV) + "/" + bundle.DownloadFile
+	}
+	return bundles, nil
 }
 
 func (bundleService *bundleService) GetBundleByHash(hash string) (*model.Bundle, error) {

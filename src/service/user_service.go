@@ -10,6 +10,7 @@ import (
 	"github.com/SwishHQ/spread/types"
 	"github.com/golang-jwt/jwt/v5"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -84,6 +85,9 @@ func (s *userService) GetUser(id string) (*model.User, error) {
 	}
 	user, err := s.userRepository.GetById(context.Background(), userId)
 	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, nil
+		}
 		return nil, err
 	}
 	if user == nil {
