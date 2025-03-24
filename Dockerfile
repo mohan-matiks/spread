@@ -35,6 +35,6 @@ WORKDIR /root/
 COPY --from=builder /app/server .
 
 # Copy frontend build files
-COPY --from=builder /app/web/dist ./web/build
+COPY --from=builder /app/web/dist ./web/dist
 
 CMD ["./server", "serve"]

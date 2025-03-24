@@ -203,12 +203,14 @@ func (bundleService *bundleService) Rollback(rollbackRequest *types.RollbackRequ
 	}
 	bundle, err := bundleService.bundleRepository.GetById(context.Background(), version.CurrentBundleId)
 	if err != nil {
+		logger.L.Error("In Rollback: Error getting current bundle", zap.Error(err))
 		return nil, err
 	}
 	// using the current bundle of version, get the previous bundle
 	// every bundle of a version has a sequence id, so we get the previous bundle by subtracting 1 from the current bundle's sequence id
 	rollbackBundle, err := bundleService.bundleRepository.GetBySequenceIdEnvironmentIdAndVersionId(context.Background(), bundle.SequenceId-1, environment.Id, version.Id)
 	if err != nil {
+		logger.L.Error("In Rollback: Error getting previous bundle", zap.Error(err))
 		return nil, err
 	}
 	// if reollback bundle which is the previous bundle to rollback to is not present
@@ -216,6 +218,7 @@ func (bundleService *bundleService) Rollback(rollbackRequest *types.RollbackRequ
 		version.CurrentBundleId = primitive.NilObjectID
 		_, err = bundleService.versionService.UpdateVersionCurrentBundleIdByVersionId(context.Background(), version.Id, primitive.NilObjectID)
 		if err != nil {
+			logger.L.Error("In Rollback: Error updating version current bundle id with nil", zap.Error(err))
 			return nil, err
 		}
 		return nil, nil
@@ -223,6 +226,7 @@ func (bundleService *bundleService) Rollback(rollbackRequest *types.RollbackRequ
 	version.CurrentBundleId = rollbackBundle.Id
 	_, err = bundleService.versionService.UpdateVersionCurrentBundleIdByVersionId(context.Background(), version.Id, rollbackBundle.Id)
 	if err != nil {
+		logger.L.Error("In Rollback: Error updating version current bundle id", zap.Error(err))
 		return nil, err
 	}
 	return rollbackBundle, nil

@@ -50,7 +50,7 @@ func (bundleRepository *bundleRepository) CreateBundle(ctx context.Context, bund
 func (bundleRepository *bundleRepository) GetById(ctx context.Context, id primitive.ObjectID) (*model.Bundle, error) {
 	collection := bundleRepository.Connection.Collection("bundles")
 	var bundle model.Bundle
-	err := collection.FindOne(ctx, bson.M{"_id": id, "isValid": true}).Decode(&bundle)
+	err := collection.FindOne(ctx, bson.M{"_id": id}).Decode(&bundle)
 	if err != nil {
 		return nil, err
 	}
