@@ -25,7 +25,7 @@ RUN npm install
 RUN npm run build
 
 # Create directory for the build files
-RUN mkdir -p /app/web/build
+RUN mkdir -p /app/web/dist
 
 FROM gcr.io/distroless/static-debian12:latest
 
@@ -35,10 +35,6 @@ WORKDIR /root/
 COPY --from=builder /app/server .
 
 # Copy frontend build files
-COPY --from=builder /app/web/build ./web/build
-
-# Set environment variables
-ENV SERVE_STATIC=true
-ENV STATIC_DIR=/root/web/build
+COPY --from=builder /app/web/dist ./web/build
 
 CMD ["./server", "serve"]
