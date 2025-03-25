@@ -16,13 +16,15 @@ type UpdateInfo struct {
 }
 
 type ReportStatusDeployRequest struct {
-	AppVersion                string  `json:"app_version"`
-	DeploymentKey             string  `json:"deployment_key"`
-	ClientUniqueId            string  `json:"client_unique_id"`
-	Label                     string  `json:"label"`
-	Status                    string  `json:"status"`
-	PreviousLabelOrAppVersion *string `json:"previous_label_or_app_version"`
-	PreviousDeploymentKey     *string `json:"previous_deployment_key"`
+	AppVersion                 string  `json:"app_version"`
+	DeploymentKey              string  `json:"deployment_key"`
+	ClientUniqueId             string  `json:"client_unique_id"`
+	Label                      string  `json:"label"`
+	Status                     string  `json:"status"`
+	PreviousLabelOrAppVersion  *string `json:"previous_label_or_app_version"`
+	PreviousDeploymentKey      *string `json:"previous_deployment_key"`
+	PreviousLableOrAppVersion2 *string `json:"previousLabelOrAppVersion"`
+	PreviousDeploymentKey2     *string `json:"previousDeploymentKey"`
 }
 
 type ReportStatusDownloadRequest struct {
