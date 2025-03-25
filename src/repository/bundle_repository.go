@@ -21,6 +21,8 @@ type BundleRepository interface {
 	GetBySequenceIdEnvironmentIdAndVersionId(ctx context.Context, sequenceId int64, environmentId primitive.ObjectID, versionId primitive.ObjectID) (*model.Bundle, error)
 	GetByLabel(ctx context.Context, label string) (*model.Bundle, error)
 	GetAllByVersionId(ctx context.Context, versionId primitive.ObjectID) ([]*model.Bundle, error)
+	UpdateIsMandatoryById(ctx context.Context, id primitive.ObjectID, isMandatory bool) (*model.Bundle, error)
+	UpdateIsValid(ctx context.Context, id primitive.ObjectID, isValid bool) (*model.Bundle, error)
 	AddActive(ctx context.Context, id primitive.ObjectID) error
 	AddFailed(ctx context.Context, id primitive.ObjectID) error
 	AddInstalled(ctx context.Context, id primitive.ObjectID) error
@@ -60,7 +62,7 @@ func (bundleRepository *bundleRepository) GetById(ctx context.Context, id primit
 func (bundleRepository *bundleRepository) GetByHash(ctx context.Context, hash string) (*model.Bundle, error) {
 	collection := bundleRepository.Connection.Collection("bundles")
 	var bundle model.Bundle
-	err := collection.FindOne(ctx, bson.M{"hash": hash, "isValid": true}).Decode(&bundle)
+	err := collection.FindOne(ctx, bson.M{"hash": hash}).Decode(&bundle)
 	if err != nil {
 		return nil, err
 	}
@@ -72,7 +74,7 @@ func (bundleRepository *bundleRepository) GetNextSeqByEnvironmentIdAndVersionId(
 		SequenceId int64 `bson:"sequenceId"`
 	}
 	collection := bundleRepository.Connection.Collection("bundles")
-	filter := bson.M{"environmentId": environmentId, "versionId": versionId, "isValid": true}
+	filter := bson.M{"environmentId": environmentId, "versionId": versionId}
 	err := collection.FindOne(ctx, filter, options.FindOne().SetSort(bson.M{"sequenceId": -1})).Decode(&result)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
@@ -95,7 +97,7 @@ func (bundleRepository *bundleRepository) UpdateVersionIdById(ctx context.Contex
 func (bundleRepository *bundleRepository) GetByEnvironmentAndVersion(ctx context.Context, environment string, version string) (*model.Bundle, error) {
 	collection := bundleRepository.Connection.Collection("bundles")
 	var bundle model.Bundle
-	err := collection.FindOne(ctx, bson.M{"environment": environment, "version": version, "isValid": true}).Decode(&bundle)
+	err := collection.FindOne(ctx, bson.M{"environment": environment, "version": version}).Decode(&bundle)
 	if err != nil {
 		return nil, err
 	}
@@ -105,7 +107,7 @@ func (bundleRepository *bundleRepository) GetByEnvironmentAndVersion(ctx context
 func (bundleRepository *bundleRepository) GetByLabel(ctx context.Context, label string) (*model.Bundle, error) {
 	collection := bundleRepository.Connection.Collection("bundles")
 	var bundle model.Bundle
-	err := collection.FindOne(ctx, bson.M{"label": label, "isValid": true}).Decode(&bundle)
+	err := collection.FindOne(ctx, bson.M{"label": label}).Decode(&bundle)
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +117,7 @@ func (bundleRepository *bundleRepository) GetByLabel(ctx context.Context, label 
 func (bundleRepository *bundleRepository) GetBySequenceIdEnvironmentIdAndVersionId(ctx context.Context, sequenceId int64, environmentId primitive.ObjectID, versionId primitive.ObjectID) (*model.Bundle, error) {
 	collection := bundleRepository.Connection.Collection("bundles")
 	var bundle model.Bundle
-	err := collection.FindOne(ctx, bson.M{"sequenceId": sequenceId, "environmentId": environmentId, "versionId": versionId, "isValid": true}).Decode(&bundle)
+	err := collection.FindOne(ctx, bson.M{"sequenceId": sequenceId, "environmentId": environmentId, "versionId": versionId}).Decode(&bundle)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return nil, nil
@@ -164,7 +166,7 @@ func (bundleRepository *bundleRepository) DecrementActive(ctx context.Context, i
 func (bundleRepository *bundleRepository) GetAllByVersionId(ctx context.Context, versionId primitive.ObjectID) ([]*model.Bundle, error) {
 	collection := bundleRepository.Connection.Collection("bundles")
 	var bundles []*model.Bundle
-	cursor, err := collection.Find(ctx, bson.M{"versionId": versionId, "isValid": true})
+	cursor, err := collection.Find(ctx, bson.M{"versionId": versionId})
 	if err != nil {
 		return nil, err
 	}
@@ -173,4 +175,22 @@ func (bundleRepository *bundleRepository) GetAllByVersionId(ctx context.Context,
 		return nil, err
 	}
 	return bundles, nil
+}
+
+func (bundleRepository *bundleRepository) UpdateIsMandatoryById(ctx context.Context, id primitive.ObjectID, isMandatory bool) (*model.Bundle, error) {
+	collection := bundleRepository.Connection.Collection("bundles")
+	_, err := collection.UpdateOne(ctx, bson.M{"_id": id}, bson.M{"$set": bson.M{"isMandatory": isMandatory}})
+	if err != nil {
+		return nil, err
+	}
+	return &model.Bundle{Id: id, IsMandatory: isMandatory}, nil
+}
+
+func (bundleRepository *bundleRepository) UpdateIsValid(ctx context.Context, id primitive.ObjectID, isValid bool) (*model.Bundle, error) {
+	collection := bundleRepository.Connection.Collection("bundles")
+	_, err := collection.UpdateOne(ctx, bson.M{"_id": id}, bson.M{"$set": bson.M{"isValid": isValid}})
+	if err != nil {
+		return nil, err
+	}
+	return &model.Bundle{Id: id, IsValid: isValid}, nil
 }

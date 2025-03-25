@@ -19,6 +19,7 @@ type VersionRepository interface {
 	GetLatestVersionByEnvironmentId(ctx context.Context, environmentId primitive.ObjectID) (*model.Version, error)
 	GetAllByEnvironmentId(ctx context.Context, environmentId primitive.ObjectID) ([]*model.Version, error)
 	GetById(ctx context.Context, id primitive.ObjectID) (*model.Version, error)
+	GetByIdAndEnvironmentId(ctx context.Context, id primitive.ObjectID, environmentId primitive.ObjectID) (*model.Version, error)
 }
 
 type versionRepository struct {
@@ -113,6 +114,16 @@ func (v *versionRepository) GetById(ctx context.Context, id primitive.ObjectID) 
 		if err == mongo.ErrNoDocuments {
 			return nil, nil
 		}
+		return nil, err
+	}
+	return &version, nil
+}
+
+func (v *versionRepository) GetByIdAndEnvironmentId(ctx context.Context, versionId primitive.ObjectID, environmentId primitive.ObjectID) (*model.Version, error) {
+	collection := v.Connection.Collection("versions")
+	var version model.Version
+	err := collection.FindOne(ctx, bson.M{"_id": versionId, "environmentId": environmentId}).Decode(&version)
+	if err != nil {
 		return nil, err
 	}
 	return &version, nil

@@ -11,7 +11,7 @@ type CreateNewBundleRequest struct {
 }
 
 type RollbackRequest struct {
-	AppName     string `json:"appName" validate:"required"`
-	Environment string `json:"environment" validate:"required"`
-	AppVersion  string `json:"appVersion" validate:"required"`
+	AppId         string `json:"appId" validate:"required"`
+	EnvironmentId string `json:"environmentId" validate:"required"`
+	VersionId     string `json:"versionId" validate:"required"`
 }

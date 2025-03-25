@@ -5,6 +5,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 import { FaArrowLeft } from 'react-icons/fa'
 import CreateEnvironmentModal, { CreateEnvironmentFormData } from '../../../components/modal/CreateEnvironmentModal'
 import { apiRequest } from '../../../api'
+import BeatLoader from 'react-spinners/BeatLoader'
 
 type Version = {
     id: string
@@ -68,8 +69,8 @@ const VersionView = () => {
     const [selectedEnvironmentId, setSelectedEnvironmentId] = useState<string>('')
     const [showCreateEnvModal, setShowCreateEnvModal] = useState(false)
     const [dropdownOpen, setDropdownOpen] = useState(false)
-    const [isLoading, setIsLoading] = useState(false)
-    const [versionsLoading, setVersionsLoading] = useState(false)
+    const [isLoading, setIsLoading] = useState(true)
+    const [versionsLoading, setVersionsLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const [versionsError, setVersionsError] = useState<string | null>(null)
 
@@ -412,8 +413,71 @@ const VersionView = () => {
                 {!isLoading && !error && environments.length === 0 ? (
                     <ZeroStateEnvironments />
                 ) : versionsLoading ? (
-                    <Box mt={4} p={4} sx={{ textAlign: 'center' }}>
-                        <Text>Loading versions...</Text>
+                    <Box mt={4}>
+                        <Box sx={{
+                            border: '1px solid #e0e0e0',
+                            borderRadius: '8px',
+                            overflow: 'hidden'
+                        }}>
+                            <Flex
+                                sx={{
+                                    borderBottom: '1px solid #e0e0e0',
+                                    bg: '#f7f7f7',
+                                    p: 3
+                                }}
+                            >
+                                <Box width={1 / 3}>
+                                    <Text fontWeight="bold">Version</Text>
+                                </Box>
+                                <Box width={1 / 3}>
+                                    <Text fontWeight="bold">Environment</Text>
+                                </Box>
+                                <Box width={1 / 3}>
+                                    <Text fontWeight="bold">Created At</Text>
+                                </Box>
+                            </Flex>
+
+                            {[1, 2].map((i) => (
+                                <Flex
+                                    key={i}
+                                    sx={{
+                                        p: 3,
+                                        borderBottom: '1px solid #e0e0e0',
+                                        '&:last-child': {
+                                            borderBottom: 'none'
+                                        }
+                                    }}
+                                >
+                                    <Box width={1 / 3}>
+                                        <Box sx={{
+                                            width: '100px',
+                                            height: '20px',
+                                            bg: '#f0f0f0',
+                                            borderRadius: '4px',
+                                            animation: 'pulse 1.5s infinite'
+                                        }} />
+                                    </Box>
+                                    <Box width={1 / 3}>
+                                        <Box sx={{
+                                            width: '120px',
+                                            height: '28px',
+                                            bg: '#f0f0f0',
+                                            borderRadius: '4px',
+                                            animation: 'pulse 1.5s infinite'
+                                        }} />
+                                    </Box>
+                                    <Box width={1 / 3}>
+                                        <Box sx={{
+                                            width: '150px',
+                                            height: '20px',
+                                            bg: '#f0f0f0',
+                                            borderRadius: '4px',
+                                            animation: 'pulse 1.5s infinite'
+                                        }} />
+                                    </Box>
+                                </Flex>
+                            ))}
+                        </Box>
                     </Box>
                 ) : versionsError ? (
                     <ZeroStateVersions />

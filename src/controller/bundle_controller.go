@@ -15,7 +15,9 @@ type BundleController interface {
 	UploadBundle(c *fiber.Ctx) error
 	CreateNewBundle(c *fiber.Ctx) error
 	GetAllByVersionId(c *fiber.Ctx) error
+	ToggleMandatory(c *fiber.Ctx) error
 	Rollback(c *fiber.Ctx) error
+	ToggleActive(c *fiber.Ctx) error
 }
 
 type bundleControllerImpl struct {
@@ -78,9 +80,6 @@ func (bundleController *bundleControllerImpl) Rollback(c *fiber.Ctx) error {
 		return utils.ValidationErrorResponse(c, validationErrors)
 	}
 	// log key user as audit log
-	authKey := c.Locals("authKey").(*model.AuthKey)
-	keyUser := authKey.CreatedBy
-	logger.L.Info("In Rollback", zap.Any("keyUser", keyUser), zap.Any("rollbackRequest", rollbackRequest))
 
 	rollbackBundle, err := bundleController.bundleService.Rollback(&rollbackRequest)
 	if err != nil {
@@ -108,4 +107,30 @@ func (bundleController *bundleControllerImpl) GetAllByVersionId(c *fiber.Ctx) er
 		return utils.ErrorResponse(c, err.Error())
 	}
 	return utils.SuccessResponse(c, bundles)
+}
+
+func (bundleController *bundleControllerImpl) ToggleMandatory(c *fiber.Ctx) error {
+	bundleId := c.Params("bundleId")
+	bundleIdPrimitive, err := primitive.ObjectIDFromHex(bundleId)
+	if err != nil {
+		return utils.ErrorResponse(c, err.Error())
+	}
+	err = bundleController.bundleService.ToggleMandatory(bundleIdPrimitive)
+	if err != nil {
+		return utils.ErrorResponse(c, err.Error())
+	}
+	return utils.SuccessResponse(c, nil)
+}
+
+func (bundleController *bundleControllerImpl) ToggleActive(c *fiber.Ctx) error {
+	bundleId := c.Params("bundleId")
+	bundleIdPrimitive, err := primitive.ObjectIDFromHex(bundleId)
+	if err != nil {
+		return utils.ErrorResponse(c, err.Error())
+	}
+	err = bundleController.bundleService.ToggleActive(bundleIdPrimitive)
+	if err != nil {
+		return utils.ErrorResponse(c, err.Error())
+	}
+	return utils.SuccessResponse(c, nil)
 }

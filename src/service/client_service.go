@@ -135,6 +135,7 @@ func (s *clientService) ReportStatusDeploy(reportStatusRequest *types.ReportStat
 
 	// if the previous label or app version is not nil, we need to decrement the active count of the previous bundle
 	if reportStatusRequest.Status == "DeploymentSucceeded" && reportStatusRequest.PreviousLabelOrAppVersion != nil && reportStatusRequest.PreviousDeploymentKey != nil {
+		logger.L.Info("In ReportStatusDeploy: Decrementing active count of previous bundle", zap.String("previousDeploymentKey", *reportStatusRequest.PreviousDeploymentKey), zap.String("previousLabelOrAppVersion", *reportStatusRequest.PreviousLabelOrAppVersion))
 		previousEnvironment, err := s.environmentService.GetEnvironmentByKey(context.Background(), *reportStatusRequest.PreviousDeploymentKey)
 		if err != nil {
 			logger.L.Error("In ReportStatusDeploy: Error getting environment by key", zap.String("deploymentKey", *reportStatusRequest.PreviousDeploymentKey), zap.Error(err))

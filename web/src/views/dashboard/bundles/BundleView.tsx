@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Box, Text, Flex } from 'rebass/styled-components'
 import { useParams, useNavigate } from 'react-router-dom'
-import { FaDownload, FaExternalLinkAlt, FaUsers, FaUndo, FaCloudDownloadAlt, FaCheckCircle, FaCopy, FaArrowLeft } from 'react-icons/fa'
+import { FaDownload, FaExternalLinkAlt, FaUsers, FaUndo, FaCloudDownloadAlt, FaCheckCircle, FaCopy, FaArrowLeft, FaTimesCircle } from 'react-icons/fa'
 import Toggle from '../../../components/Toggle'
 import BundleUsageChart from '../../../components/BundleUsageChart'
 import { apiRequest } from '../../../api'
@@ -30,6 +30,7 @@ type Bundle = {
 
 interface ApiResponse {
     success: boolean
+    error?: string
 }
 
 type Version = {
@@ -52,52 +53,81 @@ const BundleView = () => {
     const [loading, setLoading] = useState<boolean>(true)
     const [error, setError] = useState<string | null>(null)
     const [currentBundleId, setCurrentBundleId] = useState<string | null>(null)
+    const [loadingRequiredToggles, setLoadingRequiredToggles] = useState<{ [key: string]: boolean }>({})
+    const [loadingActivation, setLoadingActivation] = useState<{ [key: string]: boolean }>({})
+
+    // Add fetchBundles function
+    const fetchBundles = async () => {
+        try {
+            setLoading(true)
+            const token = localStorage.getItem('token')
+
+            const versionResponse = await apiRequest<Version>({
+                url: `/core/version/${id}`,
+                method: 'GET',
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            })
+
+            const response = await apiRequest<Bundle[]>({
+                url: `/core/version/bundle/${id}`,
+                method: 'GET',
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            })
+            console.log("/core/version/bundle/:id response", response)
+            if (response.success && response.data) {
+                const bundlesWithActiveState = (response.data).map((bundle: Bundle) => ({
+                    ...bundle,
+                    isActive: bundle.id === versionResponse.data?.currentBundleId
+                }))
+
+                setBundles(bundlesWithActiveState)
+            } else {
+                setError('Failed to load bundles')
+            }
+        } catch (err) {
+            console.error('Error fetching bundles:', err)
+            setError('Error loading bundles')
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    // Add rollback function
+    const handleRollback = async (bundleId: string) => {
+        try {
+            const token = localStorage.getItem('token')
+            const bundle = bundles.find(b => b.id === bundleId)
+
+            if (!bundle) return
+
+            const response = await apiRequest<ApiResponse>({
+                url: `/core/rollback`,
+                method: 'POST',
+                data: {
+                    appId: bundle.appId,
+                    environmentId: bundle.environmentId,
+                    versionId: bundle.versionId
+                },
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            })
+
+            if (response.success) {
+                // Refresh bundles to get updated state
+                await fetchBundles()
+            }
+        } catch (err) {
+            console.error('Error rolling back bundle:', err)
+        }
+    }
 
     useEffect(() => {
-        const fetchBundles = async () => {
-            console.log("2")
-            try {
-                setLoading(true)
-                // Get the auth token from localStorage or your auth provider
-                const token = localStorage.getItem('token')
-
-
-                const versionResponse = await apiRequest<Version>({
-                    url: `/core/version/${id}`,
-                    method: 'GET',
-                    headers: {
-                        Authorization: `Bearer ${token}`
-                    }
-                })
-
-                const response = await apiRequest<Bundle[]>({
-                    url: `/core/version/bundle/${id}`,
-                    method: 'GET',
-                    headers: {
-                        Authorization: `Bearer ${token}`
-                    }
-                })
-                console.log("/core/version/bundle/:id response", response)
-                if (response.success && response.data) {
-                    // Add isActive property based on currentBundleId
-                    console.log("Version", currentBundleId, response.data)
-                    const bundlesWithActiveState = (response.data).map((bundle: Bundle) => ({
-                        ...bundle,
-                        isActive: bundle.id === versionResponse.data?.currentBundleId
-                    }))
-
-                    setBundles(bundlesWithActiveState)
-                } else {
-                    setError('Failed to load bundles')
-                }
-            } catch (err) {
-                console.error('Error fetching bundles:', err)
-                setError('Error loading bundles')
-            } finally {
-                setLoading(false)
-            }
-        }
-
         (async () => {
             await fetchBundles()
         })()
@@ -105,12 +135,20 @@ const BundleView = () => {
 
     // Updates bundle active status via API
     const toggleBundleStatus = async (bundleId: string) => {
+        const currentBundle = bundles.find(b => b.id === bundleId)
+        if (!currentBundle) {
+            console.error('Bundle not found')
+            return
+        }
+
+        const previousIsValid = currentBundle.isValid
         try {
+            setLoadingActivation(prev => ({ ...prev, [bundleId]: true }))
             const token = localStorage.getItem('token')
 
-            // Call API to set this bundle as active
+            // Call API to toggle bundle active status
             const response = await apiRequest<ApiResponse>({
-                url: `/core/version/${id}/bundle/${bundleId}/activate`,
+                url: `/core/version/bundle/${bundleId}/active`,
                 method: 'PUT',
                 headers: {
                     Authorization: `Bearer ${token}`
@@ -118,21 +156,41 @@ const BundleView = () => {
             })
 
             if (response.success) {
-                // Update local state
-                setCurrentBundleId(bundleId)
-                setBundles(bundles.map(bundle => ({
-                    ...bundle,
-                    isActive: bundle.id === bundleId
-                })))
+                // Update local state immediately for better UX
+                setBundles(bundles.map(b =>
+                    b.id === bundleId
+                        ? { ...b, isValid: !previousIsValid }
+                        : b
+                ))
+
+                // Refresh bundles to get the latest state from server
+                await fetchBundles()
+            } else {
+                console.error('Failed to toggle bundle activation:', response.error)
+                // Revert the local state if the API call failed
+                setBundles(bundles.map(b =>
+                    b.id === bundleId
+                        ? { ...b, isValid: previousIsValid }
+                        : b
+                ))
             }
         } catch (err) {
             console.error('Error toggling bundle status:', err)
+            // Revert the local state if there was an error
+            setBundles(bundles.map(b =>
+                b.id === bundleId
+                    ? { ...b, isValid: previousIsValid }
+                    : b
+            ))
+        } finally {
+            setLoadingActivation(prev => ({ ...prev, [bundleId]: false }))
         }
     }
 
     // Updates bundle mandatory status via API
     const toggleBundleRequired = async (bundleId: string) => {
         try {
+            setLoadingRequiredToggles(prev => ({ ...prev, [bundleId]: true }))
             const token = localStorage.getItem('token')
             const bundle = bundles.find(b => b.id === bundleId)
 
@@ -142,7 +200,7 @@ const BundleView = () => {
             const response = await apiRequest<ApiResponse>({
                 url: `/core/version/bundle/${bundleId}/mandatory`,
                 method: 'PUT',
-                data: { isMandatory: !bundle.isMandatory }, // Use 'data' instead of 'body' for axios
+                data: { isMandatory: !bundle.isMandatory },
                 headers: {
                     Authorization: `Bearer ${token}`
                 }
@@ -158,6 +216,8 @@ const BundleView = () => {
             }
         } catch (err) {
             console.error('Error toggling bundle required status:', err)
+        } finally {
+            setLoadingRequiredToggles(prev => ({ ...prev, [bundleId]: false }))
         }
     }
 
@@ -208,8 +268,236 @@ const BundleView = () => {
     // Show loading state
     if (loading) {
         return (
-            <Box p={4} textAlign="center">
-                <Text fontSize="18px">Loading bundles...</Text>
+            <Box p={4}>
+                {/* Header Skeleton */}
+                <Flex alignItems="center" mb={5}>
+                    <Box
+                        sx={{
+                            width: '36px',
+                            height: '36px',
+                            bg: '#f0f0f0',
+                            borderRadius: '4px',
+                            mr: 3,
+                            animation: 'pulse 1.5s ease-in-out infinite',
+                            '@keyframes pulse': {
+                                '0%': { opacity: 0.6 },
+                                '50%': { opacity: 1 },
+                                '100%': { opacity: 0.6 }
+                            }
+                        }}
+                    />
+                    <Box
+                        sx={{
+                            width: '120px',
+                            height: '32px',
+                            bg: '#f0f0f0',
+                            borderRadius: '4px',
+                            mr: 3,
+                            animation: 'pulse 1.5s ease-in-out infinite',
+                        }}
+                    />
+                    <Box
+                        sx={{
+                            width: '80px',
+                            height: '24px',
+                            bg: '#f0f0f0',
+                            borderRadius: '16px',
+                            animation: 'pulse 1.5s ease-in-out infinite',
+                        }}
+                    />
+                </Flex>
+
+                {/* Active Bundle Skeleton */}
+                <Box mb={4}>
+                    <Box
+                        sx={{
+                            width: '120px',
+                            height: '24px',
+                            bg: '#f0f0f0',
+                            borderRadius: '4px',
+                            mb: 3,
+                            animation: 'pulse 1.5s ease-in-out infinite',
+                        }}
+                    />
+                    <Box
+                        sx={{
+                            border: '1px solid #e0e0e0',
+                            borderRadius: '8px',
+                            padding: '24px',
+                            borderLeftColor: '#f0f0f0',
+                            borderLeftWidth: '4px',
+                            bg: '#fff',
+                        }}
+                    >
+                        <Flex justifyContent="space-between">
+                            {/* Left section skeleton */}
+                            <Box width="60%">
+                                <Box
+                                    sx={{
+                                        width: '280px',
+                                        height: '24px',
+                                        bg: '#f0f0f0',
+                                        borderRadius: '4px',
+                                        mb: 4,
+                                        animation: 'pulse 1.5s ease-in-out infinite',
+                                    }}
+                                />
+                                <Box
+                                    sx={{
+                                        width: '400px',
+                                        height: '16px',
+                                        bg: '#f0f0f0',
+                                        borderRadius: '4px',
+                                        mb: 2,
+                                        animation: 'pulse 1.5s ease-in-out infinite',
+                                    }}
+                                />
+                                <Box
+                                    sx={{
+                                        width: '320px',
+                                        height: '16px',
+                                        bg: '#f0f0f0',
+                                        borderRadius: '4px',
+                                        mb: 4,
+                                        animation: 'pulse 1.5s ease-in-out infinite',
+                                    }}
+                                />
+                                <Flex flexWrap="wrap">
+                                    {[1, 2, 3, 4].map((i) => (
+                                        <Box
+                                            key={i}
+                                            sx={{
+                                                width: '120px',
+                                                height: '32px',
+                                                bg: '#f0f0f0',
+                                                borderRadius: '4px',
+                                                mr: 3,
+                                                mb: 2,
+                                                animation: 'pulse 1.5s ease-in-out infinite',
+                                                animationDelay: `${i * 0.1}s`,
+                                            }}
+                                        />
+                                    ))}
+                                </Flex>
+                            </Box>
+
+                            {/* Right section skeleton */}
+                            <Box width="30%" sx={{ textAlign: 'right' }}>
+                                {[1, 2, 3].map((i) => (
+                                    <Box
+                                        key={i}
+                                        sx={{
+                                            width: '140px',
+                                            height: '32px',
+                                            bg: '#f0f0f0',
+                                            borderRadius: '4px',
+                                            mb: 3,
+                                            ml: 'auto',
+                                            animation: 'pulse 1.5s ease-in-out infinite',
+                                            animationDelay: `${i * 0.1}s`,
+                                        }}
+                                    />
+                                ))}
+                            </Box>
+                        </Flex>
+                    </Box>
+                </Box>
+
+                {/* History Skeleton */}
+                <Box>
+                    <Box
+                        sx={{
+                            width: '120px',
+                            height: '24px',
+                            bg: '#f0f0f0',
+                            borderRadius: '4px',
+                            mb: 3,
+                            animation: 'pulse 1.5s ease-in-out infinite',
+                        }}
+                    />
+                    {[1, 2].map((i) => (
+                        <Box
+                            key={i}
+                            sx={{
+                                border: '1px solid #e0e0e0',
+                                borderRadius: '8px',
+                                padding: '24px',
+                                mb: 3,
+                                opacity: 0.85,
+                                bg: '#fff',
+                            }}
+                        >
+                            <Flex justifyContent="space-between">
+                                <Box width="60%">
+                                    <Box
+                                        sx={{
+                                            width: '240px',
+                                            height: '24px',
+                                            bg: '#f0f0f0',
+                                            borderRadius: '4px',
+                                            mb: 4,
+                                            animation: 'pulse 1.5s ease-in-out infinite',
+                                        }}
+                                    />
+                                    <Box
+                                        sx={{
+                                            width: '360px',
+                                            height: '16px',
+                                            bg: '#f0f0f0',
+                                            borderRadius: '4px',
+                                            mb: 2,
+                                            animation: 'pulse 1.5s ease-in-out infinite',
+                                        }}
+                                    />
+                                    <Box
+                                        sx={{
+                                            width: '280px',
+                                            height: '16px',
+                                            bg: '#f0f0f0',
+                                            borderRadius: '4px',
+                                            mb: 4,
+                                            animation: 'pulse 1.5s ease-in-out infinite',
+                                        }}
+                                    />
+                                    <Flex flexWrap="wrap">
+                                        {[1, 2, 3, 4].map((j) => (
+                                            <Box
+                                                key={j}
+                                                sx={{
+                                                    width: '110px',
+                                                    height: '32px',
+                                                    bg: '#f0f0f0',
+                                                    borderRadius: '4px',
+                                                    mr: 3,
+                                                    mb: 2,
+                                                    animation: 'pulse 1.5s ease-in-out infinite',
+                                                    animationDelay: `${j * 0.1}s`,
+                                                }}
+                                            />
+                                        ))}
+                                    </Flex>
+                                </Box>
+                                <Box width="30%" sx={{ textAlign: 'right' }}>
+                                    {[1, 2, 3].map((j) => (
+                                        <Box
+                                            key={j}
+                                            sx={{
+                                                width: '140px',
+                                                height: '32px',
+                                                bg: '#f0f0f0',
+                                                borderRadius: '4px',
+                                                mb: 3,
+                                                ml: 'auto',
+                                                animation: 'pulse 1.5s ease-in-out infinite',
+                                                animationDelay: `${j * 0.1}s`,
+                                            }}
+                                        />
+                                    ))}
+                                </Box>
+                            </Flex>
+                        </Box>
+                    ))}
+                </Box>
             </Box>
         )
     }
@@ -300,49 +588,6 @@ const BundleView = () => {
                                         <Text fontWeight="600" fontSize="16px" mr={2}>
                                             #{activeBundle.sequenceId}
                                         </Text>
-                                        <Flex
-                                            alignItems="center"
-                                            sx={{
-                                                bg: '#f7f7f7',
-                                                px: 2,
-                                                py: 1,
-                                                borderRadius: '4px',
-                                            }}
-                                        >
-                                            <Text
-                                                fontFamily="monospace"
-                                                fontSize="14px"
-                                                color="#555"
-                                                mr={2}
-                                                sx={{ letterSpacing: '0.5px' }}
-                                            >
-                                                {formatHash(activeBundle.hash)}
-                                            </Text>
-                                            <Box
-                                                as="span"
-                                                mr={1}
-                                                sx={{
-                                                    cursor: 'pointer',
-                                                    color: '#34C363',
-                                                    '&:hover': { color: '#2ba352' }
-                                                }}
-                                                title="Copy full hash"
-                                                onClick={(e) => copyToClipboard(activeBundle.hash, e)}
-                                            >
-                                                <FaCopy size={12} />
-                                            </Box>
-                                            <Box
-                                                as="span"
-                                                sx={{
-                                                    cursor: 'pointer',
-                                                    color: '#34C363',
-                                                    '&:hover': { textDecoration: 'underline' }
-                                                }}
-                                                title="View full hash"
-                                            >
-                                                <FaExternalLinkAlt size={12} />
-                                            </Box>
-                                        </Flex>
                                     </Flex>
 
                                     <Text
@@ -482,17 +727,18 @@ const BundleView = () => {
                                                     bg: '#fff8e6'
                                                 }
                                             }}
+                                            onClick={() => handleRollback(activeBundle.id)}
                                         >
                                             <Box as="span" mr={1}><FaUndo size={12} /></Box>
                                             Rollback
                                         </Box>
                                         <Box mb={3}>
                                             <Toggle
-                                                isActive={activeBundle.isActive || false}
-                                                onChange={() => {/* Already active */ }}
-                                                label="Active"
+                                                isActive={activeBundle.isValid}
+                                                onChange={() => toggleBundleStatus(activeBundle.id)}
+                                                label="Enabled"
                                                 size="small"
-                                                disabled
+                                                disabled={loadingActivation[activeBundle.id]}
                                             />
                                         </Box>
                                         <Box mb={3}>
@@ -501,6 +747,7 @@ const BundleView = () => {
                                                 onChange={() => toggleBundleRequired(activeBundle.id)}
                                                 label="Required"
                                                 size="small"
+                                                disabled={loadingRequiredToggles[activeBundle.id]}
                                             />
                                         </Box>
                                         {activeBundle.downloadFile && (
@@ -579,49 +826,6 @@ const BundleView = () => {
                                             <Text fontWeight="600" fontSize="16px" mr={2}>
                                                 #{bundle.sequenceId}
                                             </Text>
-                                            <Flex
-                                                alignItems="center"
-                                                sx={{
-                                                    bg: '#f7f7f7',
-                                                    px: 2,
-                                                    py: 1,
-                                                    borderRadius: '4px',
-                                                }}
-                                            >
-                                                <Text
-                                                    fontFamily="monospace"
-                                                    fontSize="14px"
-                                                    color="#555"
-                                                    mr={2}
-                                                    sx={{ letterSpacing: '0.5px' }}
-                                                >
-                                                    {formatHash(bundle.hash)}
-                                                </Text>
-                                                <Box
-                                                    as="span"
-                                                    mr={1}
-                                                    sx={{
-                                                        cursor: 'pointer',
-                                                        color: '#34C363',
-                                                        '&:hover': { color: '#2ba352' }
-                                                    }}
-                                                    title="Copy full hash"
-                                                    onClick={(e) => copyToClipboard(bundle.hash, e)}
-                                                >
-                                                    <FaCopy size={12} />
-                                                </Box>
-                                                <Box
-                                                    as="span"
-                                                    sx={{
-                                                        cursor: 'pointer',
-                                                        color: '#34C363',
-                                                        '&:hover': { textDecoration: 'underline' }
-                                                    }}
-                                                    title="View full hash"
-                                                >
-                                                    <FaExternalLinkAlt size={12} />
-                                                </Box>
-                                            </Flex>
                                         </Flex>
 
                                         <Text
@@ -741,30 +945,14 @@ const BundleView = () => {
                                                     <Text ml={2} fontSize="14px" fontWeight="500">Required</Text>
                                                 </Box>
                                             )}
-                                            <Box
-                                                as="button"
-                                                mb={3}
-                                                sx={{
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                    height: '28px',
-                                                    px: 3,
-                                                    border: '1px solid #34C363',
-                                                    color: '#34C363',
-                                                    borderRadius: '4px',
-                                                    bg: 'transparent',
-                                                    fontSize: '14px',
-                                                    fontWeight: '500',
-                                                    cursor: 'pointer',
-                                                    '&:hover': {
-                                                        bg: '#f0fff4'
-                                                    }
-                                                }}
-                                                onClick={() => toggleBundleStatus(bundle.id)}
-                                            >
-                                                <Box as="span" mr={1}><FaCheckCircle size={12} /></Box>
-                                                Activate
+                                            <Box mb={3}>
+                                                <Toggle
+                                                    isActive={bundle.isValid}
+                                                    onChange={() => toggleBundleStatus(bundle.id)}
+                                                    label="Enabled"
+                                                    size="small"
+                                                    disabled={loadingActivation[bundle.id]}
+                                                />
                                             </Box>
                                             <Box mb={3}>
                                                 <Toggle
@@ -772,6 +960,7 @@ const BundleView = () => {
                                                     onChange={() => toggleBundleRequired(bundle.id)}
                                                     label="Required"
                                                     size="small"
+                                                    disabled={loadingRequiredToggles[bundle.id]}
                                                 />
                                             </Box>
                                             {bundle.downloadFile && (

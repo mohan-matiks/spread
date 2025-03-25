@@ -26,6 +26,8 @@ type BundleService interface {
 	GetBundleById(id primitive.ObjectID) (*model.Bundle, error)
 	GetBundleByLabel(label string) (*model.Bundle, error)
 	GetBundlesByVersionId(versionId primitive.ObjectID) ([]*model.Bundle, error)
+	ToggleMandatory(bundleId primitive.ObjectID) error
+	ToggleActive(bundleId primitive.ObjectID) error
 	AddActive(ctx context.Context, id primitive.ObjectID) error
 	AddFailed(ctx context.Context, id primitive.ObjectID) error
 	AddInstalled(ctx context.Context, id primitive.ObjectID) error
@@ -178,29 +180,36 @@ func (bundleService *bundleService) CreateNewBundle(payload *types.CreateNewBund
 
 // Rollback is essentially changing the bundle of a version to the previous bundle if any exists
 func (bundleService *bundleService) Rollback(rollbackRequest *types.RollbackRequest) (*model.Bundle, error) {
-	app, err := bundleService.appService.GetAppByName(context.Background(), rollbackRequest.AppName)
+	app, err := bundleService.appService.GetAppById(context.Background(), rollbackRequest.AppId)
 	if err != nil {
 		return nil, err
 	}
-	environment, err := bundleService.environmentService.GetEnvironmentByAppIdAndName(context.Background(), app.Id, rollbackRequest.Environment)
+	logger.L.Info("In Rollback: App found", zap.Any("app", app))
+	environment, err := bundleService.environmentService.GetEnvironmentByAppIdAndEnvironmentId(context.Background(), app.Id, rollbackRequest.EnvironmentId)
 	if err != nil {
 		return nil, err
 	}
 	if environment == nil {
 		return nil, errors.New("environment not found")
 	}
-	version, err := bundleService.versionService.GetVersionByEnvironmentIdAndAppVersion(context.Background(), environment.Id, rollbackRequest.AppVersion)
+	logger.L.Info("In Rollback: Environment found", zap.Any("environment", environment))
+	versionId, err := primitive.ObjectIDFromHex(rollbackRequest.VersionId)
+	if err != nil {
+		return nil, errors.New("error converting version id")
+	}
+	version, err := bundleService.versionService.GetVersionByEnvironmentIdAndVersionId(context.Background(), versionId, environment.Id)
 	if err != nil {
 		return nil, err
 	}
 	if version == nil {
 		return nil, errors.New("version not found")
 	}
-
+	logger.L.Info("In Rollback: Version found", zap.Any("version", version))
 	// if no current bundle is set for the version, then return an error
 	if version.CurrentBundleId == primitive.NilObjectID {
 		return nil, errors.New("no bundle found")
 	}
+	logger.L.Info("In Rollback: Version found", zap.Any("version", version))
 	bundle, err := bundleService.bundleRepository.GetById(context.Background(), version.CurrentBundleId)
 	if err != nil {
 		logger.L.Error("In Rollback: Error getting current bundle", zap.Error(err))
@@ -253,6 +262,32 @@ func (bundleService *bundleService) GetBundlesByVersionId(versionId primitive.Ob
 		bundles[i].DownloadFile = utils.GetBaseBucketUrl(config.ENV) + "/" + bundle.DownloadFile
 	}
 	return bundles, nil
+}
+
+func (bundleService *bundleService) ToggleMandatory(bundleId primitive.ObjectID) error {
+	bundle, err := bundleService.bundleRepository.GetById(context.Background(), bundleId)
+	if err != nil {
+		return err
+	}
+	bundle.IsMandatory = !bundle.IsMandatory
+	_, err = bundleService.bundleRepository.UpdateIsMandatoryById(context.Background(), bundleId, bundle.IsMandatory)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (bundleService *bundleService) ToggleActive(bundleId primitive.ObjectID) error {
+	bundle, err := bundleService.bundleRepository.GetById(context.Background(), bundleId)
+	if err != nil {
+		return err
+	}
+	bundle.IsValid = !bundle.IsValid
+	_, err = bundleService.bundleRepository.UpdateIsValid(context.Background(), bundleId, bundle.IsValid)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (bundleService *bundleService) GetBundleByHash(hash string) (*model.Bundle, error) {

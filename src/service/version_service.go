@@ -14,6 +14,7 @@ type VersionService interface {
 	CreateVersion(ctx context.Context, version *model.Version) (*model.Version, error)
 	UpdateVersionCurrentBundleIdByVersionId(ctx context.Context, id primitive.ObjectID, currentBundleId primitive.ObjectID) (*model.Version, error)
 	GetVersionByEnvironmentIdAndAppVersion(ctx context.Context, environmentId primitive.ObjectID, appVersion string) (*model.Version, error)
+	GetVersionByEnvironmentIdAndVersionId(ctx context.Context, versionId primitive.ObjectID, environmentId primitive.ObjectID) (*model.Version, error)
 	GetLatestVersionByEnvironmentId(ctx context.Context, environmentId primitive.ObjectID) (*model.Version, error)
 	GetAllVersionsByEnvironmentId(ctx context.Context, environmentId primitive.ObjectID) ([]*model.Version, error)
 	GetByVersionId(ctx context.Context, versionId primitive.ObjectID) (*model.Version, error)
@@ -72,6 +73,20 @@ func (v *versionService) GetAllVersionsByEnvironmentId(ctx context.Context, envi
 
 func (v *versionService) GetByVersionId(ctx context.Context, versionId primitive.ObjectID) (*model.Version, error) {
 	version, err := v.versionRepository.GetById(ctx, versionId)
+	if err != nil {
+		return nil, err
+	}
+	if version == nil {
+		return nil, errors.New("version not found")
+	}
+	return version, nil
+}
+
+func (v *versionService) GetVersionByEnvironmentIdAndVersionId(ctx context.Context, versionId primitive.ObjectID, environmentId primitive.ObjectID) (*model.Version, error) {
+	version, err := v.versionRepository.GetByIdAndEnvironmentId(ctx, versionId, environmentId)
+	if err == mongo.ErrNoDocuments {
+		return nil, nil
+	}
 	if err != nil {
 		return nil, err
 	}

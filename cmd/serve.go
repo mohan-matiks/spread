@@ -119,12 +119,13 @@ func serve(cmd *cobra.Command, args []string) {
 	coreGroup.Get("/version/:versionId", versionController.GetByVersionId)
 	coreGroup.Get("/version", versionController.GetAll)
 	coreGroup.Get("/version/bundle/:versionId", bundleController.GetAllByVersionId)
-	// coreGroup.Put("/version/:id/bundle/:bundleId/activate", bundleController.ActivateBundle)
-	// coreGroup.Put("/version/bundle/:bundleId/mandatory", bundleController.ToggleMandatory)
+	coreGroup.Put("/version/bundle/:bundleId/mandatory", bundleController.ToggleMandatory)
+	coreGroup.Put("/version/bundle/:bundleId/active", bundleController.ToggleActive)
 	coreGroup.Get("/app", appController.GetApps)
 	coreGroup.Post("/app", appController.CreateApp)
 	coreGroup.Get("/app/:id", appController.GetAppById)
 	coreGroup.Post("/auth-key/create", authKeyController.CreateAuthKey)
+	coreGroup.Post("/rollback", bundleController.Rollback)
 
 	// auth key protected endpoints
 	bundleGroup := app.Group("/bundle", func(c *fiber.Ctx) error {
@@ -132,7 +133,6 @@ func serve(cmd *cobra.Command, args []string) {
 	})
 	bundleGroup.Post("/create", bundleController.CreateNewBundle)
 	bundleGroup.Post("/upload", bundleController.UploadBundle)
-	bundleGroup.Post("/rollback", bundleController.Rollback)
 
 	// Start server
 	log.Println("Server started on port " + config.ServerPort)

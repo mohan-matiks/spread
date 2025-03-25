@@ -18,6 +18,7 @@ type EnvironmentService interface {
 	GetEnvironmentByAppIdAndName(ctx context.Context, appId primitive.ObjectID, environmentName string) (*model.Environment, error)
 	GetEnvironmentByKey(ctx context.Context, key string) (*model.Environment, error)
 	GetAllEnvironmentsByAppId(ctx context.Context, appId primitive.ObjectID) ([]*model.Environment, error)
+	GetEnvironmentByAppIdAndEnvironmentId(ctx context.Context, appId primitive.ObjectID, environmentId string) (*model.Environment, error)
 }
 
 type environmentServiceImpl struct {
@@ -88,4 +89,16 @@ func (environmentService *environmentServiceImpl) GetAllEnvironmentsByAppId(ctx 
 		return nil, err
 	}
 	return environments, nil
+}
+
+func (environmentService *environmentServiceImpl) GetEnvironmentByAppIdAndEnvironmentId(ctx context.Context, appId primitive.ObjectID, id string) (*model.Environment, error) {
+	environmentId, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return nil, errors.New("error converting environment id")
+	}
+	environment, err := environmentService.environmentRepository.GetByIdAndAppId(ctx, environmentId, appId)
+	if err != nil {
+		return nil, errors.New("environment not found")
+	}
+	return environment, nil
 }
