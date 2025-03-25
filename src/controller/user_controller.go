@@ -46,9 +46,7 @@ func (c *userController) GetUser(ctx *fiber.Ctx) error {
 	user := ctx.Locals("user")
 	if user == nil {
 		logger.L.Error("In GetUser: User not found in context")
-		return ctx.Status(fiber.StatusNotFound).JSON(fiber.Map{
-			"error": "User not found",
-		})
+		return utils.ErrorResponse(ctx, "User not found")
 	}
 	return utils.SuccessResponse(ctx, user)
 }
@@ -58,18 +56,14 @@ func (c *userController) LoginUser(ctx *fiber.Ctx) error {
 	validationErrors := utils.BindAndValidate(ctx, &user)
 	if len(validationErrors) > 0 {
 		logger.L.Error("In LoginUser: Validation errors", zap.Any("validationErrors", validationErrors))
-		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": validationErrors,
-		})
+		return utils.ValidationErrorResponse(ctx, validationErrors)
 	}
 	accessToken, err := c.userService.Login(&user)
 	if err != nil {
 		logger.L.Error("In LoginUser: Error logging in", zap.Error(err))
-		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": err.Error(),
-		})
+		return utils.ErrorResponse(ctx, err.Error())
 	}
-	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{
+	return utils.SuccessResponse(ctx, fiber.Map{
 		"access_token": *accessToken,
 	})
 }
