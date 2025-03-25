@@ -26,7 +26,7 @@ func createLogger() *zap.Logger {
 		return logger
 	}
 
-	// stdout := zapcore.AddSync(os.Stdout)
+	stdout := zapcore.AddSync(os.Stdout)
 
 	file := zapcore.AddSync(&lumberjack.Logger{
 		Filename:   "/var/log/layout/application.log",
@@ -44,7 +44,7 @@ func createLogger() *zap.Logger {
 	developmentCfg := zap.NewDevelopmentEncoderConfig()
 	developmentCfg.EncodeLevel = zapcore.CapitalColorLevelEncoder
 
-	// consoleEncoder := zapcore.NewConsoleEncoder(developmentCfg)
+	consoleEncoder := zapcore.NewConsoleEncoder(developmentCfg)
 	fileEncoder := zapcore.NewJSONEncoder(productionCfg)
 
 	var core zapcore.Core
@@ -76,6 +76,7 @@ func createLogger() *zap.Logger {
 	}
 
 	core = zapcore.NewTee(
+		zapcore.NewCore(consoleEncoder, stdout, level),
 		zapcore.NewCore(fileEncoder, file, level),
 	)
 	return zap.New(core)
