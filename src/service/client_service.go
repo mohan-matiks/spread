@@ -83,7 +83,7 @@ func (s *clientService) CheckUpdate(environmentKey string, appVersion string, bu
 			IsMandatory:            bundle.IsMandatory,
 			TargetBinaryRange:      appVersion,
 			PackageHash:            bundle.Hash,
-			Label:                  bundle.Id.Hex(),
+			Label:                  bundle.Label,
 			PackageSize:            bundle.Size,
 			UpdateAppVersion:       false,
 			ShouldRunBinaryVersion: false,
