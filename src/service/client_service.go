@@ -106,8 +106,16 @@ func (s *clientService) CheckUpdate(environmentKey string, appVersion string, bu
 // we retrive bundle using the labelId, during checkupdate we send label as bundleId which
 // the SDK sends back to report status. Use the label to fetch bundle and react to the status
 func (s *clientService) ReportStatusDeploy(reportStatusRequest *types.ReportStatusDeployRequest) error {
-
-	bundle, err := s.bundleService.GetBundleByLabel(reportStatusRequest.Label)
+	environment, err := s.environmentService.GetEnvironmentByKey(context.Background(), reportStatusRequest.DeploymentKey)
+	if err != nil {
+		logger.L.Error("In ReportStatusDeploy: Error getting environment by key", zap.String("deploymentKey", reportStatusRequest.DeploymentKey), zap.Error(err))
+		return err
+	}
+	if environment == nil {
+		logger.L.Error("In ReportStatusDeploy: Environment not found", zap.String("deploymentKey", reportStatusRequest.DeploymentKey))
+		return errors.New("environment not found")
+	}
+	bundle, err := s.bundleService.GetBundleByLabelAndEnvironmentId(reportStatusRequest.Label, environment.Id)
 	if err != nil {
 		logger.L.Error("In ReportStatusDeploy: Error getting bundle by id", zap.String("App Version", reportStatusRequest.AppVersion), zap.String("Deployment Key", reportStatusRequest.DeploymentKey), zap.String("Client Unique Id", reportStatusRequest.ClientUniqueId), zap.String("Label", reportStatusRequest.Label), zap.Error(err))
 		return err
@@ -145,7 +153,7 @@ func (s *clientService) ReportStatusDeploy(reportStatusRequest *types.ReportStat
 			logger.L.Error("In ReportStatusDeploy: Previous environment not found", zap.String("previousDeploymentKey", *reportStatusRequest.PreviousDeploymentKey))
 			return nil
 		}
-		previousBundle, err := s.bundleService.GetBundleByLabel(*reportStatusRequest.PreviousLabelOrAppVersion)
+		previousBundle, err := s.bundleService.GetBundleByLabelAndEnvironmentId(*reportStatusRequest.PreviousLabelOrAppVersion, previousEnvironment.Id)
 		if err != nil {
 			logger.L.Error("In ReportStatusDeploy: Error getting bundle by label", zap.String("bundleId", *reportStatusRequest.PreviousLabelOrAppVersion), zap.Error(err))
 			return err
@@ -166,13 +174,22 @@ func (s *clientService) ReportStatusDeploy(reportStatusRequest *types.ReportStat
 }
 
 func (s *clientService) ReportStatusDownload(reportStatusRequest *types.ReportStatusDownloadRequest) error {
-	bundle, err := s.bundleService.GetBundleByLabel(*reportStatusRequest.Label)
+	environment, err := s.environmentService.GetEnvironmentByKey(context.Background(), reportStatusRequest.DeploymentKey)
 	if err != nil {
-		logger.L.Error("In ReportStatusDownload: Error getting bundle by id", zap.String("bundleId", *reportStatusRequest.Label), zap.Error(err))
+		logger.L.Error("In ReportStatusDownload: Error getting environment by key", zap.String("deploymentKey", reportStatusRequest.DeploymentKey), zap.Error(err))
+		return err
+	}
+	if environment == nil {
+		logger.L.Error("In ReportStatusDownload: Environment not found", zap.String("deploymentKey", reportStatusRequest.DeploymentKey))
+		return errors.New("environment not found")
+	}
+	bundle, err := s.bundleService.GetBundleByLabelAndEnvironmentId(reportStatusRequest.Label, environment.Id)
+	if err != nil {
+		logger.L.Error("In ReportStatusDownload: Error getting bundle by id", zap.String("bundleId", reportStatusRequest.Label), zap.Error(err))
 		return err
 	}
 	if bundle == nil {
-		logger.L.Error("In ReportStatusDownload: Bundle not found", zap.String("bundleLabel", *reportStatusRequest.Label))
+		logger.L.Error("In ReportStatusDownload: Bundle not found", zap.String("bundleLabel", reportStatusRequest.Label))
 		return errors.New("bundle not found")
 	}
 	err = s.bundleService.AddInstalled(context.Background(), bundle.Id)

@@ -24,7 +24,7 @@ type BundleService interface {
 	Rollback(rollbackRequest *types.RollbackRequest) (*model.Bundle, error)
 	CreateNewBundle(createNewBundleRequest *types.CreateNewBundleRequest, createdBy string) (*model.Bundle, error)
 	GetBundleById(id primitive.ObjectID) (*model.Bundle, error)
-	GetBundleByLabel(label string) (*model.Bundle, error)
+	GetBundleByLabelAndEnvironmentId(label string, environmentId primitive.ObjectID) (*model.Bundle, error)
 	GetBundlesByVersionId(versionId primitive.ObjectID) ([]*model.Bundle, error)
 	ToggleMandatory(bundleId primitive.ObjectID) error
 	ToggleActive(bundleId primitive.ObjectID) error
@@ -241,8 +241,8 @@ func (bundleService *bundleService) Rollback(rollbackRequest *types.RollbackRequ
 	return rollbackBundle, nil
 }
 
-func (bundleService *bundleService) GetBundleByLabel(label string) (*model.Bundle, error) {
-	bundle, err := bundleService.bundleRepository.GetByLabel(context.Background(), label)
+func (bundleService *bundleService) GetBundleByLabelAndEnvironmentId(label string, environmentId primitive.ObjectID) (*model.Bundle, error) {
+	bundle, err := bundleService.bundleRepository.GetByLabelAndEnvironmentId(context.Background(), label, environmentId)
 	if err == mongo.ErrNoDocuments {
 		return nil, nil
 	}

@@ -19,7 +19,7 @@ type BundleRepository interface {
 	GetByEnvironmentAndVersion(ctx context.Context, environment string, version string) (*model.Bundle, error)
 	GetNextSeqByEnvironmentIdAndVersionId(ctx context.Context, environmentId primitive.ObjectID, versionId primitive.ObjectID) (int64, error)
 	GetBySequenceIdEnvironmentIdAndVersionId(ctx context.Context, sequenceId int64, environmentId primitive.ObjectID, versionId primitive.ObjectID) (*model.Bundle, error)
-	GetByLabel(ctx context.Context, label string) (*model.Bundle, error)
+	GetByLabelAndEnvironmentId(ctx context.Context, label string, environmentId primitive.ObjectID) (*model.Bundle, error)
 	GetAllByVersionId(ctx context.Context, versionId primitive.ObjectID) ([]*model.Bundle, error)
 	UpdateIsMandatoryById(ctx context.Context, id primitive.ObjectID, isMandatory bool) (*model.Bundle, error)
 	UpdateIsValid(ctx context.Context, id primitive.ObjectID, isValid bool) (*model.Bundle, error)
@@ -104,10 +104,10 @@ func (bundleRepository *bundleRepository) GetByEnvironmentAndVersion(ctx context
 	return &bundle, nil
 }
 
-func (bundleRepository *bundleRepository) GetByLabel(ctx context.Context, label string) (*model.Bundle, error) {
+func (bundleRepository *bundleRepository) GetByLabelAndEnvironmentId(ctx context.Context, label string, environmentId primitive.ObjectID) (*model.Bundle, error) {
 	collection := bundleRepository.Connection.Collection("bundles")
 	var bundle model.Bundle
-	err := collection.FindOne(ctx, bson.M{"label": label}).Decode(&bundle)
+	err := collection.FindOne(ctx, bson.M{"label": label, "environmentId": environmentId}).Decode(&bundle)
 	if err != nil {
 		return nil, err
 	}
