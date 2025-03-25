@@ -5,7 +5,6 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 import { FaArrowLeft } from 'react-icons/fa'
 import CreateEnvironmentModal, { CreateEnvironmentFormData } from '../../../components/modal/CreateEnvironmentModal'
 import { apiRequest } from '../../../api'
-import BeatLoader from 'react-spinners/BeatLoader'
 
 type Version = {
     id: string

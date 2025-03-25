@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { Box, Text, Flex } from 'rebass/styled-components'
 import { useParams, useNavigate } from 'react-router-dom'
-import { FaDownload, FaExternalLinkAlt, FaUsers, FaUndo, FaCloudDownloadAlt, FaCheckCircle, FaCopy, FaArrowLeft, FaTimesCircle } from 'react-icons/fa'
+import { FaDownload, FaUsers, FaUndo, FaCloudDownloadAlt, FaCheckCircle, FaArrowLeft } from 'react-icons/fa'
 import Toggle from '../../../components/Toggle'
 import BundleUsageChart from '../../../components/BundleUsageChart'
 import { apiRequest } from '../../../api'
@@ -52,7 +52,6 @@ const BundleView = () => {
     const [bundles, setBundles] = useState<Bundle[]>([])
     const [loading, setLoading] = useState<boolean>(true)
     const [error, setError] = useState<string | null>(null)
-    const [currentBundleId, setCurrentBundleId] = useState<string | null>(null)
     const [loadingRequiredToggles, setLoadingRequiredToggles] = useState<{ [key: string]: boolean }>({})
     const [loadingActivation, setLoadingActivation] = useState<{ [key: string]: boolean }>({})
 
@@ -237,10 +236,10 @@ const BundleView = () => {
     }
 
     // Format hash for better display
-    const formatHash = (hash: string) => {
-        // Return full hash with hyphen separators every 8 characters for readability
-        return hash.match(/.{1,8}/g)?.join('-') || hash;
-    }
+    // const formatHash = (hash: string) => {
+    //     // Return full hash with hyphen separators every 8 characters for readability
+    //     return hash.match(/.{1,8}/g)?.join('-') || hash;
+    // }
 
     // Format file size to readable format
     const formatFileSize = (bytes: number): string => {
@@ -252,11 +251,11 @@ const BundleView = () => {
     }
 
     // Copy hash to clipboard
-    const copyToClipboard = (text: string, event: React.MouseEvent) => {
-        event.stopPropagation();
-        navigator.clipboard.writeText(text);
-        // Could add toast notification here
-    }
+    // const copyToClipboard = (text: string, event: React.MouseEvent) => {
+    //     event.stopPropagation();
+    //     navigator.clipboard.writeText(text);
+    //     // Could add toast notification here
+    // }
 
     // Get sorted bundles (descending by sequenceId)
     const sortedBundles = [...bundles].sort((a, b) => b.sequenceId - a.sequenceId);

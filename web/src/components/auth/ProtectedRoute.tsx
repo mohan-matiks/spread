@@ -12,7 +12,7 @@ interface ProtectedRouteProps {
  * Redirects to login if not authenticated
  */
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-    const { isAuthenticated, loading } = useAuthStore();
+    const { isAuthenticated } = useAuthStore();
 
     // If still loading auth state, you could show a spinner here
     // if (loading) {
