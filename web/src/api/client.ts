@@ -4,7 +4,7 @@ import { navigationService, ROUTES } from "./navigation";
 
 // Create axios instance with default config
 const client = axios.create({
-  baseURL: "http://localhost:4000",
+  baseURL: import.meta.env.VITE_ENV === "local" ? "http://localhost:4000" : "",
   headers: {
     "Content-Type": "application/json",
   },
