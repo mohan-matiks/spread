@@ -110,7 +110,7 @@ func (bundleService *bundleService) CreateNewBundle(payload *types.CreateNewBund
 			Failed:        0,
 			Installed:     0,
 			IsValid:       true,
-			Label:         "v" + strconv.Itoa(int(versionNumber)) + ":" + strconv.Itoa(1),
+			Label:         "v" + strconv.Itoa(int(versionNumber)) + "x" + strconv.Itoa(1),
 			CreatedBy:     createdBy,
 			SequenceId:    1,
 		}
@@ -163,7 +163,7 @@ func (bundleService *bundleService) CreateNewBundle(payload *types.CreateNewBund
 		IsMandatory:   false,
 		Failed:        0,
 		Installed:     0,
-		Label:         "v" + strconv.Itoa(int(version.VersionNumber)) + ":" + strconv.Itoa(int(sequenceId)),
+		Label:         "v" + strconv.Itoa(int(version.VersionNumber)) + "x" + strconv.Itoa(int(sequenceId)),
 		IsValid:       true,
 	}
 	bundle, err = bundleService.bundleRepository.CreateBundle(context.Background(), bundle)
