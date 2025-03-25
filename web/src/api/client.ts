@@ -1,6 +1,15 @@
 import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
 import { ApiResponse } from "../types/api";
 import { navigationService, ROUTES } from "./navigation";
+import { toast } from "react-toastify";
+
+// Helper function to format error messages
+const formatErrorMessage = (message: string | string[]): string => {
+  if (Array.isArray(message)) {
+    return message.join("\n");
+  }
+  return message;
+};
 
 // Create axios instance with default config
 const client = axios.create({
@@ -56,6 +65,20 @@ export const apiRequest = async <T>(
 
     // Check if response has the expected structure with nested data
     if (response.data && response.data.success !== undefined) {
+      // Show error toast if the response indicates failure
+      if (!response.data.success) {
+        const errorMessage = formatErrorMessage(
+          response.data.message || "An error occurred"
+        );
+        toast.error(errorMessage, {
+          position: "top-right",
+          autoClose: 5000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        });
+      }
       return response.data as ApiResponse<T>;
     }
 
@@ -67,8 +90,21 @@ export const apiRequest = async <T>(
   } catch (error) {
     if (axios.isAxiosError(error)) {
       // Handle axios errors
-      const errorMessage =
-        error.response?.data?.error || error.message || "An error occurred";
+      const errorMessage = formatErrorMessage(
+        error.response?.data?.message ||
+          error.response?.data?.error ||
+          error.message ||
+          "An error occurred"
+      );
+
+      toast.error(errorMessage, {
+        position: "top-right",
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
 
       return {
         success: false,
@@ -77,9 +113,19 @@ export const apiRequest = async <T>(
     }
 
     // Handle non-axios errors
+    const errorMessage = "An unexpected error occurred";
+    toast.error(errorMessage, {
+      position: "top-right",
+      autoClose: 5000,
+      hideProgressBar: false,
+      closeOnClick: true,
+      pauseOnHover: true,
+      draggable: true,
+    });
+
     return {
       success: false,
-      error: "An unexpected error occurred",
+      error: errorMessage,
     };
   }
 };

@@ -21,6 +21,7 @@ func createLogger() *zap.Logger {
 		config := zap.NewDevelopmentConfig()
 		config.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
 		config.Encoding = "console"
+		config.Level = zap.NewAtomicLevelAt(zap.InfoLevel)
 		logger, _ := config.Build()
 		defer logger.Sync()
 		return logger
@@ -55,7 +56,7 @@ func createLogger() *zap.Logger {
 		encoderCfg.EncodeTime = zapcore.ISO8601TimeEncoder
 
 		config := zap.Config{
-			Level:             zap.NewAtomicLevelAt(zap.InfoLevel),
+			Level:             level,
 			Development:       false,
 			DisableCaller:     false,
 			DisableStacktrace: false,

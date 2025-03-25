@@ -36,6 +36,6 @@ func UnauthorizedResponse(c *fiber.Ctx, message string) error {
 func ValidationErrorResponse(c *fiber.Ctx, errors []string) error {
 	return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 		"success": false,
-		"errors":  errors,
+		"message": errors,
 	})
 }

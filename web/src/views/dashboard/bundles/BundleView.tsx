@@ -47,8 +47,9 @@ const BundleView = () => {
     const params = useParams<{ id: string }>()
     const id = params.id
     const navigate = useNavigate()
-    const version = "v1.0.3" // Example version
 
+    // Add version state
+    const [version, setVersion] = useState<Version | null>(null)
     const [bundles, setBundles] = useState<Bundle[]>([])
     const [loading, setLoading] = useState<boolean>(true)
     const [error, setError] = useState<string | null>(null)
@@ -68,6 +69,11 @@ const BundleView = () => {
                     Authorization: `Bearer ${token}`
                 }
             })
+
+            // Store version data
+            if (versionResponse.success && versionResponse.data) {
+                setVersion(versionResponse.data)
+            }
 
             const response = await apiRequest<Bundle[]>({
                 url: `/core/version/bundle/${id}`,
@@ -545,21 +551,39 @@ const BundleView = () => {
                             <FaArrowLeft size={16} />
                         </Box>
                         <Text fontSize={"28px"} fontWeight={"bold"} mr={3}>Releases</Text>
-                        <Box
-                            sx={{
-                                display: 'inline-block',
-                                bg: '#f0f0f0',
-                                color: '#666',
-                                px: 2,
-                                py: 1,
-                                borderRadius: '16px',
-                                fontSize: '14px',
-                                fontWeight: '500',
-                                mr: 2
-                            }}
-                        >
-                            {version}
-                        </Box>
+                        {version && (
+                            <>
+                                <Box
+                                    sx={{
+                                        display: 'inline-block',
+                                        bg: '#f0f0f0',
+                                        color: '#666',
+                                        px: 2,
+                                        py: 1,
+                                        borderRadius: '16px',
+                                        fontSize: '14px',
+                                        fontWeight: '500',
+                                        mr: 2
+                                    }}
+                                >
+                                    {version.appVersion}
+                                </Box>
+                                <Box
+                                    sx={{
+                                        display: 'inline-block',
+                                        bg: '#e8f5e9',
+                                        color: '#2e7d32',
+                                        px: 2,
+                                        py: 1,
+                                        borderRadius: '16px',
+                                        fontSize: '14px',
+                                        fontWeight: '500'
+                                    }}
+                                >
+                                    {version.environmentId === 'prod' ? 'Production' : 'Development'}
+                                </Box>
+                            </>
+                        )}
                     </Flex>
                 </Flex>
 
