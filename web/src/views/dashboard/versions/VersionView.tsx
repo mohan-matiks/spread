@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react'
 import { Box, Text, Flex } from 'rebass/styled-components'
 import Button from '../../../components/primitives/Button'
 import { useSearchParams, useNavigate } from 'react-router-dom'
-import { FaArrowLeft } from 'react-icons/fa'
+import { FaArrowLeft, FaCopy } from 'react-icons/fa'
 import CreateEnvironmentModal, { CreateEnvironmentFormData } from '../../../components/modal/CreateEnvironmentModal'
 import { apiRequest } from '../../../api'
+import { toast } from 'react-toastify'
 
 type Version = {
     id: string
@@ -233,6 +234,16 @@ const VersionView = () => {
         return `${str.charAt(0)}.${str.charAt(1)}.${str.substring(2)}`.replace(/\.0+$/, '');
     };
 
+    const copyToClipboard = async (text: string, event: React.MouseEvent) => {
+        event.stopPropagation();
+        try {
+            await navigator.clipboard.writeText(text);
+            toast.success('Copied to clipboard!');
+        } catch (err) {
+            toast.error('Failed to copy to clipboard');
+        }
+    };
+
     return (
         <Box>
             <Box
@@ -305,9 +316,33 @@ const VersionView = () => {
                                             }
                                         }}
                                     >
-                                        <Text fontWeight="500" color="#333">
-                                            {selectedEnvironment.charAt(0).toUpperCase() + selectedEnvironment.slice(1)}
-                                        </Text>
+                                        <Flex alignItems="center">
+                                            <Text fontWeight="500" color="#333">
+                                                {selectedEnvironment.charAt(0).toUpperCase() + selectedEnvironment.slice(1)}
+                                            </Text>
+                                            {environments.find(env => env.name === selectedEnvironment)?.key && (
+                                                <Box
+                                                    onClick={(e) => copyToClipboard(environments.find(env => env.name === selectedEnvironment)?.key || '', e)}
+                                                    sx={{
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        padding: '2px 8px',
+                                                        borderRadius: '4px',
+                                                        backgroundColor: '#f3f4f6',
+                                                        cursor: 'pointer',
+                                                        ml: 2,
+                                                        '&:hover': {
+                                                            backgroundColor: '#e5e7eb'
+                                                        }
+                                                    }}
+                                                >
+                                                    <FaCopy size={12} color="#6b7280" />
+                                                    <Text ml={1} fontSize="12px" color="#6b7280">
+                                                        {environments.find(env => env.name === selectedEnvironment)?.key.slice(0, 8)}...
+                                                    </Text>
+                                                </Box>
+                                            )}
+                                        </Flex>
                                         <Box
                                             sx={{
                                                 width: '14px',
@@ -379,17 +414,38 @@ const VersionView = () => {
                                                         }
                                                     }}
                                                 >
-                                                    <Flex alignItems="center">
-                                                        <Box mr={2}>
-                                                            {env.name === 'production' ? (
-                                                                <Box as="span" sx={{ color: '#34C363' }}>🚀</Box>
-                                                            ) : (
-                                                                <Box as="span" sx={{ color: '#5569ff' }}>🔧</Box>
-                                                            )}
+                                                    <Flex alignItems="center" justifyContent="space-between">
+                                                        <Flex alignItems="center">
+                                                            <Box mr={2}>
+                                                                {env.name === 'production' ? (
+                                                                    <Box as="span" sx={{ color: '#34C363' }}>🚀</Box>
+                                                                ) : (
+                                                                    <Box as="span" sx={{ color: '#5569ff' }}>🔧</Box>
+                                                                )}
+                                                            </Box>
+                                                            <Text fontWeight={selectedEnvironment === env.name ? 'bold' : 'normal'} color="#333">
+                                                                {env.name.charAt(0).toUpperCase() + env.name.slice(1)}
+                                                            </Text>
+                                                        </Flex>
+                                                        <Box
+                                                            onClick={(e) => copyToClipboard(env.key, e)}
+                                                            sx={{
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                padding: '4px 8px',
+                                                                borderRadius: '4px',
+                                                                backgroundColor: '#f3f4f6',
+                                                                cursor: 'pointer',
+                                                                '&:hover': {
+                                                                    backgroundColor: '#e5e7eb'
+                                                                }
+                                                            }}
+                                                        >
+                                                            <FaCopy size={12} color="#6b7280" />
+                                                            <Text ml={1} fontSize="12px" color="#6b7280">
+                                                                {env.key.slice(0, 8)}...
+                                                            </Text>
                                                         </Box>
-                                                        <Text fontWeight={selectedEnvironment === env.name ? 'bold' : 'normal'} color="#333">
-                                                            {env.name.charAt(0).toUpperCase() + env.name.slice(1)}
-                                                        </Text>
                                                     </Flex>
                                                 </Box>
                                             ))}
