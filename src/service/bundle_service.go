@@ -74,6 +74,7 @@ func (bundleService *bundleService) UploadBundle(fileName string, file *multipar
 // we check if a version (0.0.1) exists, if it does then we create a new bundle and set the version id to the bundle
 // if it doesn't exist then we create a new version and set the bundle id to the version
 func (bundleService *bundleService) CreateNewBundle(payload *types.CreateNewBundleRequest, createdBy string) (*model.Bundle, error) {
+	logger.L.Info("In CreateNewBundle: Creating new bundle", zap.Any("payload", createdBy))
 	// Retrieve the app by name
 	app, err := bundleService.appService.GetAppByName(context.Background(), payload.AppName)
 	if err != nil {
@@ -109,7 +110,7 @@ func (bundleService *bundleService) CreateNewBundle(payload *types.CreateNewBund
 			IsMandatory:   false,
 			Failed:        0,
 			Installed:     0,
-			IsValid:       true,
+			IsValid:       false,
 			Label:         "v" + strconv.Itoa(int(versionNumber)) + "x" + strconv.Itoa(1),
 			CreatedBy:     createdBy,
 			SequenceId:    1,
@@ -138,7 +139,7 @@ func (bundleService *bundleService) CreateNewBundle(payload *types.CreateNewBund
 		return bundle, nil
 	}
 	// If version exists, check if a bundle with the same hash already exists
-	existingBundle, err := bundleService.GetBundleByHash(payload.Hash)
+	existingBundle, err := bundleService.GetBundleByHashAndVersionId(payload.Hash, version.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -160,11 +161,12 @@ func (bundleService *bundleService) CreateNewBundle(payload *types.CreateNewBund
 		Description:   payload.Description,
 		SequenceId:    sequenceId,
 		VersionId:     version.Id,
+		CreatedBy:     createdBy,
 		IsMandatory:   false,
 		Failed:        0,
 		Installed:     0,
 		Label:         "v" + strconv.Itoa(int(version.VersionNumber)) + "x" + strconv.Itoa(int(sequenceId)),
-		IsValid:       true,
+		IsValid:       false,
 	}
 	bundle, err = bundleService.bundleRepository.CreateBundle(context.Background(), bundle)
 	if err != nil {
@@ -290,8 +292,8 @@ func (bundleService *bundleService) ToggleActive(bundleId primitive.ObjectID) er
 	return nil
 }
 
-func (bundleService *bundleService) GetBundleByHash(hash string) (*model.Bundle, error) {
-	bundle, err := bundleService.bundleRepository.GetByHash(context.Background(), hash)
+func (bundleService *bundleService) GetBundleByHashAndVersionId(hash string, versionId primitive.ObjectID) (*model.Bundle, error) {
+	bundle, err := bundleService.bundleRepository.GetByHashAndVersionId(context.Background(), hash, versionId)
 	if err == mongo.ErrNoDocuments {
 		return nil, nil
 	}

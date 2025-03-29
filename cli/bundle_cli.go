@@ -313,15 +313,18 @@ func createAndUploadBundle(config BundleConfig, fileName string, hash string) er
 	uploadClient := &http.Client{}
 	resp, err := uploadClient.Do(req)
 	if err != nil {
+		os.RemoveAll(fileName)
 		log.Panic(err.Error())
 	}
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
+		os.RemoveAll(fileName)
 		log.Panicf("Failed to read response body: %v", err)
 	}
 	if resp.StatusCode != 200 {
 		log.Println("✦ Upload fail", string(body))
+		os.RemoveAll(fileName)
 		return fmt.Errorf("upload failed: %s", resp.Status)
 	}
 	log.Println("✦ Bundle has been uploaded successfully.")
@@ -329,6 +332,7 @@ func createAndUploadBundle(config BundleConfig, fileName string, hash string) er
 
 	Url, err = url.Parse(config.RemoteURL + "/bundle/create")
 	if err != nil {
+		os.RemoveAll(fileName)
 		log.Panic("Server url error :", err)
 	}
 	fileInfo, _ := os.Stat(fileName)
@@ -349,6 +353,7 @@ func createAndUploadBundle(config BundleConfig, fileName string, hash string) er
 	createBundleClient := &http.Client{}
 	resp, err = createBundleClient.Do(req)
 	if err != nil {
+		os.RemoveAll(fileName)
 		log.Panic(err.Error())
 	}
 	defer resp.Body.Close()
@@ -358,6 +363,7 @@ func createAndUploadBundle(config BundleConfig, fileName string, hash string) er
 			log.Panicf("Failed to read error response: %v", err)
 		}
 		log.Printf("✦ Create bundle failed. Status: %s, Response: %s", resp.Status, string(body))
+		os.RemoveAll(fileName)
 		return fmt.Errorf("failed to create bundle: %s", resp.Status)
 	}
 	log.Println("✦ Bundle has been created successfully.")

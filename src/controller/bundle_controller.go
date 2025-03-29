@@ -62,8 +62,8 @@ func (bundleController *bundleControllerImpl) CreateNewBundle(c *fiber.Ctx) erro
 	}
 	authKey := c.Locals("authKey").(*model.AuthKey)
 	createdBy := authKey.CreatedBy
-	bundle, err := bundleController.bundleService.CreateNewBundle(&createNewBundleRequest, createdBy)
 	logger.L.Info("In CreateNewBundle: Creating new bundle", zap.Any("keyUser", createdBy), zap.Any("createNewBundleRequest", createNewBundleRequest))
+	bundle, err := bundleController.bundleService.CreateNewBundle(&createNewBundleRequest, createdBy)
 	if err != nil {
 		logger.L.Error("In CreateNewBundle: Failed to create new bundle", zap.Error(err))
 		return utils.ErrorResponse(c, err.Error())

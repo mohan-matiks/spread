@@ -14,7 +14,7 @@ import (
 type BundleRepository interface {
 	CreateBundle(ctx context.Context, bundle *model.Bundle) (*model.Bundle, error)
 	GetById(ctx context.Context, id primitive.ObjectID) (*model.Bundle, error)
-	GetByHash(ctx context.Context, hash string) (*model.Bundle, error)
+	GetByHashAndVersionId(ctx context.Context, hash string, versionId primitive.ObjectID) (*model.Bundle, error)
 	UpdateVersionIdById(ctx context.Context, id primitive.ObjectID, versionId primitive.ObjectID) (*model.Bundle, error)
 	GetByEnvironmentAndVersion(ctx context.Context, environment string, version string) (*model.Bundle, error)
 	GetNextSeqByEnvironmentIdAndVersionId(ctx context.Context, environmentId primitive.ObjectID, versionId primitive.ObjectID) (int64, error)
@@ -59,10 +59,10 @@ func (bundleRepository *bundleRepository) GetById(ctx context.Context, id primit
 	return &bundle, nil
 }
 
-func (bundleRepository *bundleRepository) GetByHash(ctx context.Context, hash string) (*model.Bundle, error) {
+func (bundleRepository *bundleRepository) GetByHashAndVersionId(ctx context.Context, hash string, versionId primitive.ObjectID) (*model.Bundle, error) {
 	collection := bundleRepository.Connection.Collection("bundles")
 	var bundle model.Bundle
-	err := collection.FindOne(ctx, bson.M{"hash": hash}).Decode(&bundle)
+	err := collection.FindOne(ctx, bson.M{"hash": hash, "versionId": versionId}).Decode(&bundle)
 	if err != nil {
 		return nil, err
 	}
