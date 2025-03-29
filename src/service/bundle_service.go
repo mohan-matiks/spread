@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"mime/multipart"
+	"sort"
 	"strconv"
 
 	"github.com/SwishHQ/spread/config"
@@ -217,6 +218,11 @@ func (bundleService *bundleService) Rollback(rollbackRequest *types.RollbackRequ
 		logger.L.Error("In Rollback: Error getting current bundle", zap.Error(err))
 		return nil, err
 	}
+	// if already in base bundle of a version lets restrict
+	if bundle.SequenceId == int64(utils.BASE_BUNDLE_SEQUENCE_ID) {
+		logger.L.Error("In Rollback: Base bundle of a version cannot be rolled back", zap.Any("bundle", bundle))
+		return nil, errors.New("base bundle of a version cannot be rolled back")
+	}
 	// using the current bundle of version, get the previous bundle
 	// every bundle of a version has a sequence id, so we get the previous bundle by subtracting 1 from the current bundle's sequence id
 	rollbackBundle, err := bundleService.bundleRepository.GetBySequenceIdEnvironmentIdAndVersionId(context.Background(), bundle.SequenceId-1, environment.Id, version.Id)
@@ -263,6 +269,10 @@ func (bundleService *bundleService) GetBundlesByVersionId(versionId primitive.Ob
 	for i, bundle := range bundles {
 		bundles[i].DownloadFile = utils.GetBaseBucketUrl(config.ENV) + "/" + bundle.DownloadFile
 	}
+	// sort bundles by createdAt in descending order
+	sort.Slice(bundles, func(i, j int) bool {
+		return bundles[i].CreatedAt.After(bundles[j].CreatedAt)
+	})
 	return bundles, nil
 }
 

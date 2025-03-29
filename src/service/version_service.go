@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"sort"
 
 	"github.com/SwishHQ/spread/src/model"
 	"github.com/SwishHQ/spread/src/repository"
@@ -68,6 +69,10 @@ func (v *versionService) GetAllVersionsByEnvironmentId(ctx context.Context, envi
 	if err != nil {
 		return nil, err
 	}
+	// sort versions by createdAt in descending order
+	sort.Slice(versions, func(i, j int) bool {
+		return versions[i].CreatedAt.After(versions[j].CreatedAt)
+	})
 	return versions, nil
 }
 
