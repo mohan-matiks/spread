@@ -36,7 +36,7 @@ const initialState = {
   error: null,
 };
 
-const useVersionStore = create<VersionState>((set, get) => ({
+const useVersionStore = create<VersionState>((set) => ({
   ...initialState,
 
   // Actions

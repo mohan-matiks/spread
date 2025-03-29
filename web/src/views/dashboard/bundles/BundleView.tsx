@@ -7,7 +7,6 @@ import BundleUsageChart from '../../../components/BundleUsageChart'
 import { apiRequest } from '../../../api'
 import useAppStore from '../../../store/appStore'
 import useVersionStore from '../../../store/versionStore'
-import { Bundle } from '../../../types/api'
 
 interface ApiResponse {
     success: boolean
@@ -21,8 +20,6 @@ const BundleView = () => {
 
     // Use the global app store for app and environment data
     const {
-        selectedApp,
-        selectedEnvironment,
         environments,
         fetchEnvironments
     } = useAppStore()

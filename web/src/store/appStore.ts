@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { App, Environment, Version } from "../types/api";
+import { App, Environment } from "../types/api";
 import { apiRequest } from "../api";
 
 interface AppState {
@@ -38,7 +38,7 @@ const initialState = {
   error: null,
 };
 
-const useAppStore = create<AppState>((set, get) => ({
+const useAppStore = create<AppState>((set) => ({
   ...initialState,
 
   // Actions
