@@ -5,42 +5,13 @@ import { FaDownload, FaUsers, FaUndo, FaCloudDownloadAlt, FaCheckCircle, FaArrow
 import Toggle from '../../../components/Toggle'
 import BundleUsageChart from '../../../components/BundleUsageChart'
 import { apiRequest } from '../../../api'
-
-type Bundle = {
-    id: string
-    environmentId: string
-    versionId: string
-    appId: string
-    sequenceId: number
-    hash: string
-    size: number
-    downloadFile: string
-    isMandatory: boolean
-    failed: number
-    installed: number
-    active: number
-    description: string
-    label: string
-    isValid: boolean
-    createdBy: string
-    createdAt: string
-    updatedAt: string
-    isActive?: boolean // UI state to track if bundle is active
-}
+import useAppStore from '../../../store/appStore'
+import useVersionStore from '../../../store/versionStore'
+import { Bundle } from '../../../types/api'
 
 interface ApiResponse {
     success: boolean
     error?: string
-}
-
-type Version = {
-    id: string
-    environmentId: string
-    appVersion: string
-    versionNumber: number
-    currentBundleId: string
-    updatedAt: string
-    createdAt: string
 }
 
 const BundleView = () => {
@@ -48,56 +19,105 @@ const BundleView = () => {
     const id = params.id
     const navigate = useNavigate()
 
-    // Add version state
-    const [version, setVersion] = useState<Version | null>(null)
-    const [bundles, setBundles] = useState<Bundle[]>([])
+    // Use the global app store for app and environment data
+    const {
+        selectedApp,
+        selectedEnvironment,
+        environments,
+        fetchEnvironments
+    } = useAppStore()
+
+    // Use the global version store for version and bundle data
+    const {
+        selectedVersion,
+        bundles,
+        loadingVersions,
+        loadingBundles,
+        error: versionError,
+        fetchVersion,
+        fetchBundles,
+        setBundles
+    } = useVersionStore()
+
+    // Local loading and error states
     const [loading, setLoading] = useState<boolean>(true)
     const [error, setError] = useState<string | null>(null)
     const [loadingRequiredToggles, setLoadingRequiredToggles] = useState<{ [key: string]: boolean }>({})
     const [loadingActivation, setLoadingActivation] = useState<{ [key: string]: boolean }>({})
 
-    // Add fetchBundles function
-    const fetchBundles = async () => {
-        try {
-            setLoading(true)
-            const token = localStorage.getItem('token')
+    // Load version and bundles
+    useEffect(() => {
+        if (!id) return;
 
-            const versionResponse = await apiRequest<Version>({
-                url: `/core/version/${id}`,
-                method: 'GET',
-                headers: {
-                    Authorization: `Bearer ${token}`
+        const loadData = async () => {
+            setLoading(true);
+            try {
+                // First fetch the version
+                const versionData = await fetchVersion(id);
+
+                // Then fetch bundles for this version
+                await fetchBundles(id);
+
+                // If we have version data but no environments, fetch environments for this version's app
+                if (versionData && environments.length === 0 && versionData.environmentId) {
+                    // First get full environment info from API to get appId
+                    const token = localStorage.getItem('token');
+                    const envResponse = await apiRequest<{ appId: string }>({
+                        url: `/core/environment/${versionData.environmentId}`,
+                        method: 'GET',
+                        headers: {
+                            Authorization: `Bearer ${token}`
+                        }
+                    });
+
+                    // If we successfully got the environment with appId, fetch all environments for this app
+                    if (envResponse.success && envResponse.data && envResponse.data.appId) {
+                        await fetchEnvironments(envResponse.data.appId);
+                    }
                 }
-            })
-
-            // Store version data
-            if (versionResponse.success && versionResponse.data) {
-                setVersion(versionResponse.data)
+            } catch (err) {
+                console.error('Error loading version data:', err);
+                setError('Failed to load version data');
+            } finally {
+                setLoading(false);
             }
+        };
 
-            const response = await apiRequest<Bundle[]>({
-                url: `/core/version/bundle/${id}`,
-                method: 'GET',
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
-            })
-            console.log("/core/version/bundle/:id response", response)
-            if (response.success && response.data) {
-                const bundlesWithActiveState = (response.data).map((bundle: Bundle) => ({
-                    ...bundle,
-                    isActive: bundle.id === versionResponse.data?.currentBundleId
-                }))
+        loadData();
+    }, [id, fetchVersion, fetchBundles, fetchEnvironments, environments.length]);
 
-                setBundles(bundlesWithActiveState)
-            } else {
-                setError('Failed to load bundles')
-            }
-        } catch (err) {
-            console.error('Error fetching bundles:', err)
-            setError('Error loading bundles')
-        } finally {
-            setLoading(false)
+    useEffect(() => {
+        // Set error from store if it exists
+        if (versionError) {
+            setError(versionError);
+        }
+    }, [versionError]);
+
+    // Find environment by ID from global store
+    const getEnvironmentName = (environmentId: string) => {
+        // First try to find the environment in the global store
+        const environment = environments.find(env => env.id === environmentId)
+        if (environment) {
+            // If we found it in the store, use its name
+            return environment.name
+        }
+
+        // If not found in the store, apply formatting rules based on ID
+        switch (environmentId?.toLowerCase()) {
+            case 'prod':
+            case 'production':
+                return 'Production';
+            case 'dev':
+            case 'development':
+                return 'Development';
+            case 'qa':
+            case 'test':
+                return 'Testing';
+            case 'staging':
+                return 'Staging';
+            default:
+                // Capitalize first letter for other environment IDs
+                return environmentId ? environmentId.charAt(0).toUpperCase() + environmentId.slice(1) : 'Unknown';
         }
     }
 
@@ -123,20 +143,14 @@ const BundleView = () => {
                 }
             })
 
-            if (response.success) {
-                // Refresh bundles to get updated state
-                await fetchBundles()
+            if (response.success && id) {
+                // Refresh bundles from the store
+                await fetchBundles(id)
             }
         } catch (err) {
             console.error('Error rolling back bundle:', err)
         }
     }
-
-    useEffect(() => {
-        (async () => {
-            await fetchBundles()
-        })()
-    }, [id])
 
     // Updates bundle active status via API
     const toggleBundleStatus = async (bundleId: string) => {
@@ -162,31 +176,36 @@ const BundleView = () => {
 
             if (response.success) {
                 // Update local state immediately for better UX
-                setBundles(bundles.map(b =>
+                const updatedBundles = bundles.map(b =>
                     b.id === bundleId
                         ? { ...b, isValid: !previousIsValid }
                         : b
-                ))
+                );
+                setBundles(updatedBundles);
 
                 // Refresh bundles to get the latest state from server
-                await fetchBundles()
+                if (id) {
+                    await fetchBundles(id);
+                }
             } else {
                 console.error('Failed to toggle bundle activation:', response.error)
                 // Revert the local state if the API call failed
-                setBundles(bundles.map(b =>
+                const revertedBundles = bundles.map(b =>
                     b.id === bundleId
                         ? { ...b, isValid: previousIsValid }
                         : b
-                ))
+                );
+                setBundles(revertedBundles);
             }
         } catch (err) {
             console.error('Error toggling bundle status:', err)
             // Revert the local state if there was an error
-            setBundles(bundles.map(b =>
+            const revertedBundles = bundles.map(b =>
                 b.id === bundleId
                     ? { ...b, isValid: previousIsValid }
                     : b
-            ))
+            );
+            setBundles(revertedBundles);
         } finally {
             setLoadingActivation(prev => ({ ...prev, [bundleId]: false }))
         }
@@ -213,11 +232,12 @@ const BundleView = () => {
 
             if (response.success) {
                 // Update local state
-                setBundles(bundles.map(bundle =>
-                    bundle.id === bundleId
-                        ? { ...bundle, isMandatory: !bundle.isMandatory }
-                        : bundle
-                ))
+                const updatedBundles = bundles.map(b =>
+                    b.id === bundleId
+                        ? { ...b, isMandatory: !b.isMandatory }
+                        : b
+                );
+                setBundles(updatedBundles);
             }
         } catch (err) {
             console.error('Error toggling bundle required status:', err)
@@ -241,12 +261,6 @@ const BundleView = () => {
         }
     }
 
-    // Format hash for better display
-    // const formatHash = (hash: string) => {
-    //     // Return full hash with hyphen separators every 8 characters for readability
-    //     return hash.match(/.{1,8}/g)?.join('-') || hash;
-    // }
-
     // Format file size to readable format
     const formatFileSize = (bytes: number): string => {
         if (bytes === 0) return '0 Bytes';
@@ -256,13 +270,6 @@ const BundleView = () => {
         return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
     }
 
-    // Copy hash to clipboard
-    // const copyToClipboard = (text: string, event: React.MouseEvent) => {
-    //     event.stopPropagation();
-    //     navigator.clipboard.writeText(text);
-    //     // Could add toast notification here
-    // }
-
     // Get sorted bundles (descending by sequenceId)
     const sortedBundles = [...bundles].sort((a, b) => b.sequenceId - a.sequenceId);
 
@@ -271,7 +278,7 @@ const BundleView = () => {
     const historyBundles = sortedBundles.filter(bundle => !bundle.isActive);
 
     // Show loading state
-    if (loading) {
+    if (loading || loadingVersions || loadingBundles) {
         return (
             <Box p={4}>
                 {/* Header Skeleton */}
@@ -551,7 +558,7 @@ const BundleView = () => {
                             <FaArrowLeft size={16} />
                         </Box>
                         <Text fontSize={"28px"} fontWeight={"bold"} mr={3}>Releases</Text>
-                        {version && (
+                        {selectedVersion && (
                             <>
                                 <Box
                                     sx={{
@@ -566,7 +573,7 @@ const BundleView = () => {
                                         mr: 2
                                     }}
                                 >
-                                    {version.appVersion}
+                                    {selectedVersion.appVersion}
                                 </Box>
                                 <Box
                                     sx={{
@@ -580,7 +587,7 @@ const BundleView = () => {
                                         fontWeight: '500'
                                     }}
                                 >
-                                    {version.environmentId === 'prod' ? 'Production' : 'Development'}
+                                    {getEnvironmentName(selectedVersion.environmentId)}
                                 </Box>
                             </>
                         )}
@@ -702,7 +709,7 @@ const BundleView = () => {
                                             month: 'short',
                                             day: 'numeric',
                                             year: '2-digit'
-                                        })} by {activeBundle.createdBy}
+                                        })}{activeBundle.createdBy ? ` by ${activeBundle.createdBy}` : ''}
                                     </Text>
                                 </Box>
 
@@ -940,7 +947,7 @@ const BundleView = () => {
                                                 month: 'short',
                                                 day: 'numeric',
                                                 year: '2-digit'
-                                            })} by {bundle.createdBy}
+                                            })}{bundle.createdBy ? ` by ${bundle.createdBy}` : ''}
                                         </Text>
                                     </Box>
 

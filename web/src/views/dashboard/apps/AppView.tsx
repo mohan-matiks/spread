@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Box, Text, Flex } from 'rebass/styled-components'
 import Button from '../../../components/primitives/Button'
 import AddAppModal, { AddAppFormData } from '../../../components/modal/AddAppModal'
@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom'
 import AppSkeleton from '../../../components/skeleton/AppSkeleton'
 import { useApps } from '../../../api/hooks'
 import { App, CreateAppRequest } from '../../../api/schemas/appSchemas'
+import useAppStore from '../../../store/appStore'
 
 const AppView = () => {
     const navigate = useNavigate()
@@ -15,6 +16,20 @@ const AppView = () => {
     const [newApp, setNewApp] = useState<AddAppFormData>({ name: '', os: 'iOS' })
     const [isCreating, setIsCreating] = useState(false)
     const [createError, setCreateError] = useState<string | null>(null)
+
+    // Use global app store
+    const {
+        setApps: setGlobalApps,
+        setSelectedApp,
+        fetchEnvironments
+    } = useAppStore()
+
+    // Sync local apps state with global store
+    useEffect(() => {
+        if (apps && apps.length > 0) {
+            setGlobalApps(apps);
+        }
+    }, [apps, setGlobalApps]);
 
     const handleOpenModal = () => {
         setShowModal(true)
@@ -56,8 +71,15 @@ const AppView = () => {
         }
     }
 
-    const handleAppClick = (appId: string) => {
-        navigate(`/dashboard/version?appId=${appId}`)
+    const handleAppClick = async (app: App) => {
+        // Save the selected app to global store
+        setSelectedApp(app);
+
+        // Fetch environments for this app and save to global store
+        await fetchEnvironments(app.id);
+
+        // Navigate to versions view
+        navigate(`/dashboard/version?appId=${app.id}`)
     }
 
     const getOsIcon = (os: string) => {
@@ -113,7 +135,7 @@ const AppView = () => {
                                     key={app.id}
                                     p={3}
                                     m={2}
-                                    onClick={() => handleAppClick(app.id)}
+                                    onClick={() => handleAppClick(app)}
                                     sx={{
                                         border: '1px solid #e0e0e0',
                                         borderRadius: '8px',
