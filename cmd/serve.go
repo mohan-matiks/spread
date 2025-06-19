@@ -101,6 +101,8 @@ func serve(cmd *cobra.Command, args []string) {
 
 	// public endpoints
 	app.Post("/login", userController.LoginUser)
+	app.Get("/setup/status", userController.SetupStatus)
+	app.Post("/init-user", userController.InitUser)
 
 	// code-push compatible endpoints
 	app.Get("/v0.1/public/codepush/update_check", clientController.CheckUpdate)
@@ -123,6 +125,7 @@ func serve(cmd *cobra.Command, args []string) {
 	coreGroup.Post("/app", appController.CreateApp)
 	coreGroup.Get("/app/:id", appController.GetAppById)
 	coreGroup.Post("/auth-key/create", authKeyController.CreateAuthKey)
+	coreGroup.Get("/auth-keys", authKeyController.GetAllAuthKeys)
 	coreGroup.Post("/rollback", bundleController.Rollback)
 	coreGroup.Post("/user/create", userController.CreateUser)
 

@@ -1,6 +1,8 @@
 package service
 
 import (
+	"context"
+
 	"github.com/SwishHQ/spread/src/model"
 	"github.com/SwishHQ/spread/src/repository"
 	"github.com/SwishHQ/spread/utils"
@@ -9,6 +11,7 @@ import (
 type AuthKeyService interface {
 	CreateAuthKey(name string, username string) (string, error)
 	GetByAuthKey(key string) (*model.AuthKey, error)
+	GetAllAuthKeys(ctx context.Context) ([]*model.AuthKey, error)
 }
 
 type authKeyService struct {
@@ -23,6 +26,7 @@ func (s *authKeyService) CreateAuthKey(name string, username string) (string, er
 	authKey := &model.AuthKey{
 		Name:      name,
 		Key:       utils.GenerateAuthKey(),
+		IsValid:   true,
 		CreatedBy: username,
 	}
 	authKey, err := s.authKeyRepository.Insert(authKey)
@@ -38,4 +42,8 @@ func (s *authKeyService) GetByAuthKey(key string) (*model.AuthKey, error) {
 		return nil, err
 	}
 	return authKey, nil
+}
+
+func (s *authKeyService) GetAllAuthKeys(ctx context.Context) ([]*model.AuthKey, error) {
+	return s.authKeyRepository.GetAll(ctx)
 }

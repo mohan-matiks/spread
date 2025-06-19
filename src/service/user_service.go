@@ -18,6 +18,7 @@ type UserService interface {
 	Create(user *types.CreateUserRequest) (*model.User, error)
 	Login(user *types.LoginUserRequest) (*string, error)
 	GetUser(id string) (*model.User, error)
+	Count(ctx context.Context) (int64, error)
 }
 
 type userService struct {
@@ -94,4 +95,8 @@ func (s *userService) GetUser(id string) (*model.User, error) {
 		return nil, errors.New("user not found")
 	}
 	return user, nil
+}
+
+func (s *userService) Count(ctx context.Context) (int64, error) {
+	return s.userRepository.Count(ctx)
 }

@@ -26,6 +26,7 @@ type BundleService interface {
 	CreateNewBundle(createNewBundleRequest *types.CreateNewBundleRequest, createdBy string) (*model.Bundle, error)
 	GetBundleById(id primitive.ObjectID) (*model.Bundle, error)
 	GetBundleByLabelAndEnvironmentId(label string, environmentId primitive.ObjectID) (*model.Bundle, error)
+	GetBundleByHashAndVersionId(hash string, versionId primitive.ObjectID) (*model.Bundle, error)
 	GetBundlesByVersionId(versionId primitive.ObjectID) ([]*model.Bundle, error)
 	ToggleMandatory(bundleId primitive.ObjectID) error
 	ToggleActive(bundleId primitive.ObjectID) error

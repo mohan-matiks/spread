@@ -10,6 +10,7 @@ import (
 
 type AuthKeyController interface {
 	CreateAuthKey(c *fiber.Ctx) error
+	GetAllAuthKeys(c *fiber.Ctx) error
 }
 
 type authKeyController struct {
@@ -33,4 +34,12 @@ func (c *authKeyController) CreateAuthKey(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, err.Error())
 	}
 	return utils.SuccessResponse(ctx, createdAuthKey)
+}
+
+func (c *authKeyController) GetAllAuthKeys(ctx *fiber.Ctx) error {
+	authKeys, err := c.authKeyService.GetAllAuthKeys(ctx.Context())
+	if err != nil {
+		return utils.ErrorResponse(ctx, err.Error())
+	}
+	return utils.SuccessResponse(ctx, authKeys)
 }

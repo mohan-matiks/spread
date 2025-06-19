@@ -13,6 +13,7 @@ import (
 type AuthKeyRepository interface {
 	Insert(authKey *model.AuthKey) (*model.AuthKey, error)
 	GetById(key string) (*model.AuthKey, error)
+	GetAll(ctx context.Context) ([]*model.AuthKey, error)
 }
 
 type authKeyRepository struct {
@@ -46,4 +47,19 @@ func (r *authKeyRepository) GetById(key string) (*model.AuthKey, error) {
 		return nil, err
 	}
 	return &authKey, nil
+}
+
+func (r *authKeyRepository) GetAll(ctx context.Context) ([]*model.AuthKey, error) {
+	collection := r.Connection.Collection("auth_keys")
+	cursor, err := collection.Find(ctx, bson.M{})
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var authKeys []*model.AuthKey
+	if err = cursor.All(ctx, &authKeys); err != nil {
+		return nil, err
+	}
+	return authKeys, nil
 }

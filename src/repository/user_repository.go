@@ -14,6 +14,7 @@ type UserRepository interface {
 	Insert(ctx context.Context, user *model.User) (*model.User, error)
 	GetByUsername(ctx context.Context, username string) (*model.User, error)
 	GetById(ctx context.Context, id primitive.ObjectID) (*model.User, error)
+	Count(ctx context.Context) (int64, error)
 }
 
 type userRepository struct {
@@ -61,4 +62,13 @@ func (r *userRepository) GetById(ctx context.Context, id primitive.ObjectID) (*m
 		return nil, err
 	}
 	return &user, nil
+}
+
+func (r *userRepository) Count(ctx context.Context) (int64, error) {
+	collection := r.db.Collection("users")
+	count, err := collection.CountDocuments(ctx, bson.M{})
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
 }
