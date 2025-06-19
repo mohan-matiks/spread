@@ -41,6 +41,14 @@ func (m *MockAuthKeyRepository) GetAll(ctx context.Context) ([]*model.AuthKey, e
 	return args.Get(0).([]*model.AuthKey), args.Error(1)
 }
 
+func (m *MockAuthKeyRepository) GetByUser(ctx context.Context, username string) ([]*model.AuthKey, error) {
+	args := m.Called(ctx, username)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*model.AuthKey), args.Error(1)
+}
+
 func TestNewAuthKeyService(t *testing.T) {
 	mockRepo := &MockAuthKeyRepository{}
 	service := NewAuthKeyService(mockRepo)

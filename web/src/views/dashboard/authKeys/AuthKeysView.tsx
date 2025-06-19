@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Box, Text, Flex } from 'rebass/styled-components';
 import { toast } from 'react-toastify';
-import { FaPlus, FaCopy, FaEye, FaEyeSlash } from 'react-icons/fa';
+import { FaPlus, FaArrowLeft } from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom';
 import { useAuthKeys } from '../../../api/hooks/useAuthKeys';
 import Button from '../../../components/primitives/Button';
 import Input from '../../../components/primitives/Input';
@@ -113,6 +114,7 @@ const AuthKeysView: React.FC = () => {
     const { authKeys, loading, error, createAuthKey } = useAuthKeys();
     const [showModal, setShowModal] = useState(false);
     const [showKeys, setShowKeys] = useState<Record<string, boolean>>({});
+    const navigate = useNavigate();
 
     const handleCreateAuthKey = async (name: string) => {
         const newKey = await createAuthKey(name);
@@ -171,14 +173,32 @@ const AuthKeysView: React.FC = () => {
                 }}
             >
                 <Flex justifyContent="space-between" alignItems="center" mb={4}>
-                    <Box>
+                    <Flex alignItems="center">
+                        <Box
+                            as="button"
+                            mr={3}
+                            sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                height: '36px',
+                                width: '36px',
+                                border: '1px solid #e0e0e0',
+                                borderRadius: '4px',
+                                bg: 'transparent',
+                                cursor: 'pointer',
+                                '&:hover': {
+                                    bg: '#f7f7f7'
+                                }
+                            }}
+                            onClick={() => navigate('/dashboard')}
+                        >
+                            <FaArrowLeft size={16} />
+                        </Box>
                         <Text fontSize="28px" fontWeight="bold">
                             Auth Keys
                         </Text>
-                        <Text fontSize="16px" color="#666" mt={1}>
-                            Auth keys are used for spread-ing your releases via CLI
-                        </Text>
-                    </Box>
+                    </Flex>
                     <Button
                         onClick={() => setShowModal(true)}
                         sx={{
@@ -240,54 +260,7 @@ const AuthKeysView: React.FC = () => {
                                             Created by {authKey.createdBy} on {formatDate(authKey.createdAt)}
                                         </Text>
                                     </Box>
-                                    <Flex>
-                                        <Box mr={1}>
-                                            <Button
-                                                onClick={() => toggleKeyVisibility(authKey.key)}
-                                                sx={{
-                                                    padding: '8px',
-                                                    minWidth: 'auto',
-                                                    backgroundColor: 'transparent',
-                                                    color: '#666',
-                                                    '&:hover': {
-                                                        backgroundColor: '#e0e0e0',
-                                                    },
-                                                }}
-                                            >
-                                                {showKeys[authKey.key] ? <FaEyeSlash size={14} /> : <FaEye size={14} />}
-                                            </Button>
-                                        </Box>
-                                        <Button
-                                            onClick={() => copyToClipboard(authKey.key)}
-                                            sx={{
-                                                padding: '8px',
-                                                minWidth: 'auto',
-                                                backgroundColor: 'transparent',
-                                                color: '#666',
-                                                '&:hover': {
-                                                    backgroundColor: '#e0e0e0',
-                                                },
-                                            }}
-                                        >
-                                            <FaCopy size={14} />
-                                        </Button>
-                                    </Flex>
                                 </Flex>
-
-                                {showKeys[authKey.key] && (
-                                    <Box
-                                        p={2}
-                                        sx={{
-                                            backgroundColor: '#f0f0f0',
-                                            borderRadius: '4px',
-                                            fontFamily: 'monospace',
-                                            fontSize: '12px',
-                                            wordBreak: 'break-all',
-                                        }}
-                                    >
-                                        {authKey.key}
-                                    </Box>
-                                )}
 
                                 <Flex alignItems="center" mt={2}>
                                     <Box
