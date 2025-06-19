@@ -8,6 +8,7 @@ import AppSkeleton from '../../../components/skeleton/AppSkeleton'
 import { useApps } from '../../../api/hooks'
 import { App, CreateAppRequest } from '../../../api/schemas/appSchemas'
 import useAppStore from '../../../store/appStore'
+import useAuthStore from '../../../store/authStore'
 
 const AppView = () => {
     const navigate = useNavigate()
@@ -23,6 +24,9 @@ const AppView = () => {
         setSelectedApp,
         fetchEnvironments
     } = useAppStore()
+
+    // Use auth store to get user information
+    const { user } = useAuthStore()
 
     // Sync local apps state with global store
     useEffect(() => {
@@ -105,7 +109,9 @@ const AppView = () => {
                 }}>
                 <Flex justifyContent={"space-between"} flexDirection={"row"}>
                     <Box flexDirection={"column"}>
-                        <Text fontSize={"28px"} fontWeight={"bold"}>Hello, Saran✨</Text>
+                        <Text fontSize={"28px"} fontWeight={"bold"}>
+                            Hello{user?.username ? `, ${user.username}` : ''}!
+                        </Text>
                     </Box>
                     <Box>
                         <Button onClick={handleOpenModal} disabled={loading}>
