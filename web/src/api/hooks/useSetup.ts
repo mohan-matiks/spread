@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { setupService, SetupStatusResponse } from "../services/setupService";
+import { setupService } from "../services/setupService";
 
 export const useSetup = () => {
   const [setupStatus, setSetupStatus] = useState<boolean | null>(null);
