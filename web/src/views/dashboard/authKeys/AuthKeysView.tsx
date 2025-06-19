@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Box, Text, Flex } from 'rebass/styled-components';
 import { toast } from 'react-toastify';
-import { FaPlus, FaArrowLeft } from 'react-icons/fa';
+import { FaPlus, FaArrowLeft, FaEye, FaEyeSlash, FaCopy } from 'react-icons/fa6';
 import { useNavigate } from 'react-router-dom';
 import { useAuthKeys } from '../../../api/hooks/useAuthKeys';
 import Button from '../../../components/primitives/Button';
@@ -146,8 +146,120 @@ const AuthKeysView: React.FC = () => {
 
     if (loading) {
         return (
-            <Box p={4}>
-                <Text>Loading auth keys...</Text>
+            <Box>
+                <Box
+                    backgroundColor="#fff"
+                    minHeight="90vh"
+                    sx={{
+                        border: "1px solid #e0e0e0",
+                        borderRadius: "10px",
+                        padding: "20px",
+                        margin: "10px",
+                    }}
+                >
+                    {/* Header Skeleton */}
+                    <Flex justifyContent="space-between" alignItems="center" mb={4}>
+                        <Flex alignItems="center">
+                            <Box
+                                sx={{
+                                    width: '36px',
+                                    height: '36px',
+                                    bg: '#f0f0f0',
+                                    borderRadius: '4px',
+                                    mr: 3,
+                                    animation: 'pulse 1.5s ease-in-out infinite',
+                                    '@keyframes pulse': {
+                                        '0%': { opacity: 0.6 },
+                                        '50%': { opacity: 1 },
+                                        '100%': { opacity: 0.6 }
+                                    }
+                                }}
+                            />
+                            <Box
+                                sx={{
+                                    width: '120px',
+                                    height: '32px',
+                                    bg: '#f0f0f0',
+                                    borderRadius: '4px',
+                                    animation: 'pulse 1.5s ease-in-out infinite',
+                                }}
+                            />
+                        </Flex>
+                        <Box
+                            sx={{
+                                width: '140px',
+                                height: '40px',
+                                bg: '#f0f0f0',
+                                borderRadius: '4px',
+                                animation: 'pulse 1.5s ease-in-out infinite',
+                            }}
+                        />
+                    </Flex>
+
+                    {/* Auth Keys Skeleton */}
+                    <Box>
+                        {[1, 2, 3].map((i) => (
+                            <Box
+                                key={i}
+                                p={3}
+                                mb={2}
+                                sx={{
+                                    border: '1px solid #e0e0e0',
+                                    borderRadius: '8px',
+                                    backgroundColor: '#fafafa',
+                                    animation: 'pulse 1.5s ease-in-out infinite',
+                                    animationDelay: `${i * 0.1}s`,
+                                }}
+                            >
+                                <Flex justifyContent="space-between" alignItems="center" mb={2}>
+                                    <Box>
+                                        <Box
+                                            sx={{
+                                                width: '180px',
+                                                height: '20px',
+                                                bg: '#f0f0f0',
+                                                borderRadius: '4px',
+                                                mb: 1,
+                                                animation: 'pulse 1.5s ease-in-out infinite',
+                                            }}
+                                        />
+                                        <Box
+                                            sx={{
+                                                width: '220px',
+                                                height: '16px',
+                                                bg: '#f0f0f0',
+                                                borderRadius: '4px',
+                                                animation: 'pulse 1.5s ease-in-out infinite',
+                                            }}
+                                        />
+                                    </Box>
+                                </Flex>
+
+                                <Flex alignItems="center" mt={2}>
+                                    <Box
+                                        sx={{
+                                            width: '8px',
+                                            height: '8px',
+                                            borderRadius: '50%',
+                                            bg: '#f0f0f0',
+                                            mr: 2,
+                                            animation: 'pulse 1.5s ease-in-out infinite',
+                                        }}
+                                    />
+                                    <Box
+                                        sx={{
+                                            width: '60px',
+                                            height: '16px',
+                                            bg: '#f0f0f0',
+                                            borderRadius: '4px',
+                                            animation: 'pulse 1.5s ease-in-out infinite',
+                                        }}
+                                    />
+                                </Flex>
+                            </Box>
+                        ))}
+                    </Box>
+                </Box>
             </Box>
         );
     }
@@ -275,6 +387,74 @@ const AuthKeysView: React.FC = () => {
                                         {authKey.isValid ? 'Active' : 'Inactive'}
                                     </Text>
                                 </Flex>
+
+                                {/* Auth Key Display with Masking */}
+                                <Box mt={3} p={2} sx={{ backgroundColor: '#f8f9fa', borderRadius: '4px' }}>
+                                    <Flex alignItems="center" justifyContent="space-between">
+                                        <Box flex={1}>
+                                            <Text fontSize="12px" color="#666" mb={1}>
+                                                Auth Key
+                                            </Text>
+                                            <Text
+                                                fontSize="14px"
+                                                fontFamily="monospace"
+                                                sx={{
+                                                    wordBreak: 'break-all',
+                                                    userSelect: showKeys[authKey.key] ? 'text' : 'none'
+                                                }}
+                                            >
+                                                {showKeys[authKey.key] ? authKey.key : '••••••••••••••••••••••••••••••••'}
+                                            </Text>
+                                        </Box>
+                                        <Flex ml={2}>
+                                            <Box
+                                                as="button"
+                                                mr={1}
+                                                sx={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    height: '32px',
+                                                    width: '32px',
+                                                    border: '1px solid #e0e0e0',
+                                                    borderRadius: '4px',
+                                                    bg: 'transparent',
+                                                    cursor: 'pointer',
+                                                    '&:hover': {
+                                                        bg: '#f0f0f0'
+                                                    }
+                                                }}
+                                                onClick={() => toggleKeyVisibility(authKey.key)}
+                                                title={showKeys[authKey.key] ? 'Hide key' : 'Show key'}
+                                            >
+                                                {showKeys[authKey.key] ? <FaEyeSlash size={14} /> : <FaEye size={14} />}
+                                            </Box>
+                                            {showKeys[authKey.key] && (
+                                                <Box
+                                                    as="button"
+                                                    sx={{
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        height: '32px',
+                                                        width: '32px',
+                                                        border: '1px solid #e0e0e0',
+                                                        borderRadius: '4px',
+                                                        bg: 'transparent',
+                                                        cursor: 'pointer',
+                                                        '&:hover': {
+                                                            bg: '#f0f0f0'
+                                                        }
+                                                    }}
+                                                    onClick={() => copyToClipboard(authKey.key)}
+                                                    title="Copy to clipboard"
+                                                >
+                                                    <FaCopy size={14} />
+                                                </Box>
+                                            )}
+                                        </Flex>
+                                    </Flex>
+                                </Box>
                             </Box>
                         ))}
                     </Box>
