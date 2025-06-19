@@ -102,8 +102,6 @@ func serve(cmd *cobra.Command, args []string) {
 	// public endpoints
 	app.Post("/login", userController.LoginUser)
 
-	// app.Post("/user/create", userController.CreateUser)
-
 	// code-push compatible endpoints
 	app.Get("/v0.1/public/codepush/update_check", clientController.CheckUpdate)
 	app.Post("/v0.1/public/codepush/report_status/deploy", clientController.ReportStatusDeploy)
@@ -126,6 +124,7 @@ func serve(cmd *cobra.Command, args []string) {
 	coreGroup.Get("/app/:id", appController.GetAppById)
 	coreGroup.Post("/auth-key/create", authKeyController.CreateAuthKey)
 	coreGroup.Post("/rollback", bundleController.Rollback)
+	coreGroup.Post("/user/create", userController.CreateUser)
 
 	// auth key protected endpoints
 	bundleGroup := app.Group("/bundle", func(c *fiber.Ctx) error {
