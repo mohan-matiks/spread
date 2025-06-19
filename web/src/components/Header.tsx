@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { FaUser, FaRightFromBracket } from 'react-icons/fa6'
+import { FaUser, FaRightFromBracket, FaKey } from 'react-icons/fa6'
 import { Flex, Box, Image, Text } from 'rebass/styled-components'
+import { useNavigate } from 'react-router-dom'
 import SpreadIcon from '../assets/spread-logo.png'
 import useAuthStore from '../store/authStore'
 import { logout } from '../api/services/authService'
@@ -8,6 +9,7 @@ import { logout } from '../api/services/authService'
 const Header = () => {
     const [showDropdown, setShowDropdown] = useState(false);
     const { user } = useAuthStore();
+    const navigate = useNavigate();
 
     const toggleDropdown = () => {
         setShowDropdown(!showDropdown);
@@ -15,6 +17,11 @@ const Header = () => {
 
     const handleLogout = () => {
         logout();
+        setShowDropdown(false);
+    };
+
+    const handleAuthKeys = () => {
+        navigate('/dashboard/auth-keys');
         setShowDropdown(false);
     };
 
@@ -59,6 +66,22 @@ const Header = () => {
                         >
                             <Text fontWeight="bold" mb={2}>
                                 {user?.username || 'Account'}
+                            </Text>
+                            <Text
+                                sx={{
+                                    color: '#666',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    "&:hover": {
+                                        cursor: "pointer",
+                                        opacity: 0.7
+                                    }
+                                }}
+                                onClick={handleAuthKeys}
+                                mb={1}
+                            >
+                                <FaKey size={14} /> Auth Keys
                             </Text>
                             <Text
                                 sx={{
