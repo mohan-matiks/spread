@@ -1,5 +1,3 @@
-# Spread - OTA Update Server for React Native Apps
-
 <div align="center">
   <img src="https://github.com/user-attachments/assets/c1c06796-43b3-47a3-a748-3cdc3fe75358" width="500" />
   <p><strong>Spread your delightful releases to the world!✨</strong></p>
