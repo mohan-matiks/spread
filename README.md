@@ -13,11 +13,11 @@ Spread is an OTA (Over-the-Air) update server designed specifically for React Na
 
 Spread uses Cloudflare R2 bucket for storing bundles. You can learn more about Cloudflare R2 [here](https://developers.cloudflare.com/r2/)
 
-You can [this](https://aexomir1.medium.com/configuring-react-native-code-push-using-custom-server-e40e87697a26) article to set Spread Host URL in react-native-code-push.
+You can use [this](https://aexomir1.medium.com/configuring-react-native-code-push-using-custom-server-e40e87697a26) article to set Spread Host URL in react-native-code-push.
 
 ### Key Features
 
-- **Fullt Self-hostable** - Complete control over your update infrastructure
+- **Fully Self-hostable** - Complete control over your update infrastructure
 - **CodePush compatible** - Drop-in replacement for Microsoft CodePush
 - **Multi-platform support** - iOS and Android bundle management
 - **Environment management** - Separate configurations for development, staging, and production
