@@ -342,7 +342,6 @@ go test ./src/service -v
 
 
 <div align="center">
-  <p>Made with ❤️ by the Swish Engineering</p>
-  <p>If you find this project helpful, please consider giving it a ⭐</p>
+  <p>Made with 💚 by the Swish Engineering</p>
 </div>
 
