@@ -111,7 +111,7 @@ const CreateAuthKeyModal: React.FC<CreateAuthKeyModalProps> = ({ isOpen, onClose
 };
 
 const AuthKeysView: React.FC = () => {
-    const { authKeys, loading, error, createAuthKey } = useAuthKeys();
+    const { authKeys, loading, createAuthKey } = useAuthKeys();
     const [showModal, setShowModal] = useState(false);
     const [showKeys, setShowKeys] = useState<Record<string, boolean>>({});
     const navigate = useNavigate();
@@ -260,14 +260,6 @@ const AuthKeysView: React.FC = () => {
                         ))}
                     </Box>
                 </Box>
-            </Box>
-        );
-    }
-
-    if (error) {
-        return (
-            <Box p={4}>
-                <Text color="red">Error: {error}</Text>
             </Box>
         );
     }
